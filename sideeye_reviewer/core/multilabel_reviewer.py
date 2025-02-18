@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons
 from typing import Optional, Dict
+# local imports
 from .base_reviewer import BaseReviewer
 from .reviewer_button import ReviewerButton
 from .sorter import ImageSorter
@@ -30,21 +31,20 @@ class MultiLabelReviewer(BaseReviewer):
         # Define properties for labels and checkboxes
         label_props = {
             'color': ['black'] * len(labels),
-            'fontsize': ['medium'] * len(labels)
+            'fontsize': ['large'] * len(labels)
         }
         check_props = {
             'facecolor': ['blue'] * len(labels),
-            'sizes': [50] * len(labels),
-            'edgecolor': ['black'] * len(labels)
+            'sizes': [75] * len(labels),
         }
         frame_props = {
             'edgecolor': 'black',
-            'sizes': [100] * len(labels),
+            'sizes': [125] * len(labels),
             'facecolor': 'white'
         }
         self.checkboxes = CheckButtons(ax_ck, labels, label_props=label_props, check_props=check_props, frame_props=frame_props)
         self.checkboxes.ax.set_facecolor('lightgray')
-        self.checkboxes.ax.set_title("Select all that apply", fontsize="large")
+        self.checkboxes.ax.set_title("Select all that apply", fontsize="x-large")
         self.add_next_button()
 
     def add_next_button(self):
@@ -63,7 +63,6 @@ class MultiLabelReviewer(BaseReviewer):
         if not self.file_list:
             return
         # Determine which checkboxes are checked
-        # statuses = self.checkboxes.get_status()  # bool array
         chosen = self.checkboxes.get_checked_labels()
         print("chosen:", chosen)
         if not chosen:
@@ -84,8 +83,8 @@ class MultiLabelReviewer(BaseReviewer):
         # Possibly create a legend if needed
         if self.legend_dict:
             for label, color in self.legend_dict.items():
-                plt.plot([], [], color=color, label=label)
-            plt.legend(loc="lower left", fontsize="medium")
+                plt.plot([], [], color=color, label=label, linewidth=4, alpha=0.4)
+            plt.legend(loc="lower left", fontsize="large")
 
 
     def begin_review(self, checkpoint=True):

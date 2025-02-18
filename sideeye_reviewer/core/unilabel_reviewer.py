@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from typing import Optional, Dict
+# local imports
 from .base_reviewer import BaseReviewer
 from .reviewer_button import ReviewerButton
 from .sorter import ImageSorter
@@ -46,8 +47,8 @@ class SingleLabelReviewer(BaseReviewer):
         if self.legend_dict:
             # Make a basic legend: e.g., {'clean':'black', 'transparent':'green'}
             for label, color in self.legend_dict.items():
-                plt.plot([], [], color=color, label=label)
-            plt.legend(loc="lower left", fontsize="medium")
+                plt.plot([], [], color=color, label=label, linewidth=4, alpha=0.4)
+            plt.legend(loc="lower left", fontsize="large")
         self.fig.subplots_adjust(left=0.05, right=0.95)  # images use 0-0.95 of the width
 
     def begin_review(self, checkpoint=True):

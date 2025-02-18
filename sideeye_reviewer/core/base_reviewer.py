@@ -117,7 +117,7 @@ class BaseReviewer:
     def _update_title(self):
         fname = self.file_list[self.current_idx] if self.file_list else "No files"
         self.fig.suptitle(
-            f"{self.fig_title}\n{fname}\n({self.current_idx+1}/{len(self.file_list)})",
+            f"{self.fig_title}\n{fname}\nProgress: {self.current_idx+1}/{len(self.file_list)}",
             fontsize="xx-large"
         )
 

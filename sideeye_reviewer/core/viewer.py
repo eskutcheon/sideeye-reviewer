@@ -1,6 +1,5 @@
 import os
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button
 from matplotlib.animation import FuncAnimation
 from PIL import Image
 from typing import List
