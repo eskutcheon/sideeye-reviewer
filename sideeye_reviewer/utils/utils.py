@@ -1,12 +1,55 @@
-import os, sys
+import os
+import sys
 import json
-import matplotlib.pyplot as plt
 from collections import Counter
 from typing import Dict, List, Union, Tuple
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-# project files
-import core.image_reviewer as IR
+from matplotlib import get_backend
+import matplotlib.pyplot as plt
 
+
+def maximize_window():
+    manager = plt.get_current_fig_manager()
+    backend = get_backend()
+    if backend == 'TkAgg':
+        if sys.platform.startswith('win'):  # For windows
+            manager.window.state('zoomed')
+        else:  # For Linux
+            manager.window.wm_attributes('-zoomed', '1')
+    elif backend in ["Qt5Agg", "qtagg"]:
+        manager.window.showMaximized()
+    elif backend == 'WXAgg':
+        manager.window.Maximize()
+    else:
+        print(f"WARNING: Unsupported backend {backend} for maximize operation")
+
+
+# UPDATE: now returns button axes centered between right_bound and left_bound
+def get_button_axes(num_buttons: int, left_bound: float = 0.3, right_bound: float = 0.95):
+    width, spacing = 0.1, 0.01
+    total_width = (width + spacing) * num_buttons - spacing  # total width of all buttons including spacing
+    if total_width > right_bound - left_bound:  # if total width exceeds available space, scale down
+        scale = (right_bound - left_bound)/total_width
+        width *= scale
+        spacing *= scale
+        total_width = (width + spacing) * num_buttons - spacing  # recalculate total width
+    # calculate additional padding needed to center buttons
+    padding = (right_bound - left_bound - total_width)/2
+    left_bound += padding  # update left_bound to center buttons
+    # TODO: adjust the lower and upper axes as needed later - top of buttons at 0.1 on figure
+    return [[left_bound + i*(width + spacing), 0.025, width, 0.075] for i in range(num_buttons)]
+
+
+def get_user_confirmation(prompt):
+    answers = {'y': True, 'n': False}
+    response = input(f"[Y/n] {prompt} ").lower()
+    while response not in answers:
+        print("Invalid input. Please enter 'y' or 'n' (not case sensitive).")
+        response = input(f"[Y/n] {prompt} ").lower()
+    return answers[response]
+
+
+
+#* file contents handling helper functions:
 
 def remove_newlines(file_list: List[str]) -> List[str]:
     return list(map(lambda x: x.rstrip('\n'), file_list))
@@ -82,49 +125,6 @@ def get_all_reviewed_files_json(out_file_path: str) -> List[str]:
         check_if_double_sorted(files_reviewed, file_list)
         files_reviewed = [*files_reviewed, *file_list]
     return files_reviewed
-
-
-def repeat_uncertain_labels_txt(img_source_dir: str, out_dir: str, sorter_labels: List[str]):
-    with open(os.path.join(out_dir, f'uncertain_labels.txt'), 'r') as fptr:
-        file_list = remove_newlines(fptr.readlines())
-    if len(file_list) != 0:
-        partial_repeat_review(img_source_dir, out_dir, sorter_labels, file_list)
-
-def repeat_uncertain_labels_json(img_source_dir: str, out_file_path: str):
-    check_file_path(out_file_path, extension='.json')
-    out_dir = os.path.dirname(out_file_path)
-    with open(out_file_path, 'r') as fptr:
-        file_dict = dict(json.load(fptr))
-    if len(file_dict['uncertain']) != 0:
-        partial_repeat_review(img_source_dir, out_dir, list(file_dict.keys()), file_dict['uncertain'])
-
-
-def repeat_skipped_labels(img_source_dir: str, out_dir: str, sorter_labels: List[str], file_sets: Dict[str, List[str]]):
-    skipped_files = list(set(file_sets['superset']).difference(set(remove_newlines(file_sets['subset']))))
-    if len(skipped_files) != 0:
-        partial_repeat_review(img_source_dir, out_dir, sorter_labels, skipped_files)
-
-
-def partial_repeat_review(img_source_dir: str, out_dir: str, sorter_labels: List[str], file_list: List[str]):
-    # needs to be the abstracted method called early in post_processing
-    run_reviewer(img_source_dir, out_dir, sorter_labels, file_list, False)
-    post_review_cleanup(img_source_dir, out_dir, sorter_labels, file_list)
-
-
-def run_reviewer(img_source_dir: str, out_dir: str, sorter_labels: List[str], example_dict: Dict[str, str], image_files=None, checkpoint=True):
-    disputed_sorter = IR.ImageSorter([img_source_dir], out_dir, sorter_labels, image_files)
-    # create dictionary of sorter labels as keys and full file paths as values for the example buttons
-    Reviewer = IR.ImageReviewer(disputed_sorter, example_dict)
-    Reviewer.begin_review(checkpoint)
-
-
-def post_review_cleanup(img_source_dir: str, out_dir: str, sorter_labels: List[str]):
-    # get a list of all files found between all the .txt files, delete duplicates and check for mistakes
-    file_sets = {
-        'superset': sorted(os.listdir(img_source_dir)),
-        'subset': get_all_reviewed_files_txt(out_dir, sorter_labels)}
-    repeat_skipped_labels(img_source_dir, out_dir, sorter_labels, file_sets)
-    repeat_uncertain_labels_txt(img_source_dir, out_dir, sorter_labels)
 
 
 def aggregate_txt2json(input_file_dict: Dict[str, str], out_file_path: str):

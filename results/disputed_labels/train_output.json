@@ -1,0 +1,17 @@
+{
+    "agree": [
+        "0001_FV.png",
+        "0007_FV.png",
+        "0008_MVL.png",
+        "0013_MVL.png",
+        "0014_MVL.png"
+    ],
+    "disagree": [
+        "0005_FV.png",
+        "0011_MVL.png",
+        "0015_MVR.png"
+    ],
+    "uncertain": [
+        "0003_FV.png"
+    ]
+}
