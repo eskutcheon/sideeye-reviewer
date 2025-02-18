@@ -120,7 +120,7 @@ class BaseReviewer:
         fname = self.file_list[self.current_idx] if self.file_list else "No files"
         self.fig.suptitle(
             f"{self.fig_title}\n{fname}\n({self.current_idx+1}/{len(self.file_list)})",
-            fontsize="x-large"
+            fontsize="xx-large"
         )
 
     def display_warning(self, message="Warning!", duration=3000):

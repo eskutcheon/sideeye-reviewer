@@ -55,6 +55,10 @@ reviewer = MultiLabelReviewer(sorter, legend_dict=CLASS_LABELS)
 reviewer.begin_review()
 ```
 
+##### **Window View**
+![](assets/multi_label_example.PNG)
+
+
 ### **Single-Label Review (`mask_review.py`)**
 ```python
 from sideeye_reviewer.core.sorter import ImageSorter
@@ -68,6 +72,11 @@ reviewer = SingleLabelReviewer(sorter, legend_dict=LEGEND_LABELS)
 reviewer.begin_review()
 ```
 
+##### **Window View**
+![](assets/single_label_example.png)
+
+
+
 ### **Results Viewer (`viewer_test.py`)**
 ```python
 from sideeye_reviewer.core.viewer import SortResultsViewer
@@ -77,6 +86,9 @@ def show_disputed_images(file_list, img_dirs):
 
 show_disputed_images(["image1.jpg", "image2.jpg"], ["path/to/images"])
 ```
+
+##### **Window View**
+![](assets/viewer_example.PNG)
 
 ---
 

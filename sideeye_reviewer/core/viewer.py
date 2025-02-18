@@ -90,7 +90,7 @@ class SortResultsViewer:
             self.img_display[i].set_data(im)
         self.fig.suptitle(
             f"{self.figure_header}\n{self.file_list[self.curr_idx]}\nProgress: {self.curr_idx + 1}/{self.num_reviewed}",
-            fontsize="x-large",
+            fontsize="xx-large",
             wrap=True
         )
         self.fig.canvas.draw()

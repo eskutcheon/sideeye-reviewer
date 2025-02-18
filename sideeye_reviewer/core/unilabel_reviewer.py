@@ -22,7 +22,6 @@ class SingleLabelReviewer(BaseReviewer):
         left_bound = max(0.05, right_bound - 0.1 * num_labels + 0.01)
         positions = get_button_axes(num_buttons=num_labels, left_bound=left_bound, right_bound=right_bound)
         for lbl, pos in zip(labels, positions):
-            print("Creating button for", lbl)
             btn = ReviewerButton.factory(
                 fig=self.fig,
                 label=lbl.upper(),
@@ -55,14 +54,8 @@ class SingleLabelReviewer(BaseReviewer):
         super().begin_review(checkpoint)
         # Because we want to create the base figure, then create our label buttons,
         # we must do so after the figure exists. Easiest is: do it right after base calls it:
-        print("value of self._stop_requested: ", self._stop_requested)
-        print("self.fig value: ", self.fig)
         if self.fig and not self._stop_requested:
             self.create_subclass_buttons()
             # Re-draw them
             self.fig.canvas.draw()
             self.main_loop()
-        # Now we run the same loop as base, but the base was already running
-        # inside begin_review. A quick approach is to do all button creation *before*
-        # the loop is actually started. So you might rearrange so the base doesn’t
-        # block. For brevity, we’ll keep it like this.

@@ -1,50 +1,28 @@
 {
-    "inaccurate_edges": [
-        "0001_FV.png",
-        "0003_FV.png",
-        "0005_FV.png",
-        "0014_MVL.png"
-    ],
+    "inaccurate_edges": [],
     "inaccurate_labels": [
-        "0001_FV.png",
-        "0003_FV.png",
-        "0005_FV.png",
-        "0014_MVL.png",
-        "0015_MVR.png"
+        "0001_FV.png"
     ],
-    "inaccurate_regions": [
-        "0001_FV.png",
-        "0003_FV.png",
-        "0005_FV.png",
-        "0007_FV.png",
-        "0011_MVL.png",
-        "0013_MVL.png",
-        "0015_MVR.png"
-    ],
+    "inaccurate_regions": [],
     "missed_border": [
         "0001_FV.png",
-        "0003_FV.png",
+        "0015_MVR.png",
+        "0023_RV.png"
+    ],
+    "laziness": [
+        "0014_MVL.png",
+        "0017_MVR.png"
+    ],
+    "other": [
         "0005_FV.png",
         "0007_FV.png",
         "0008_MVL.png",
         "0011_MVL.png",
-        "0013_MVL.png"
-    ],
-    "laziness": [
-        "0001_FV.png",
-        "0003_FV.png",
-        "0005_FV.png",
-        "0008_MVL.png"
-    ],
-    "other": [
-        "0001_FV.png",
-        "0003_FV.png",
-        "0005_FV.png",
-        "0008_MVL.png"
+        "0013_MVL.png",
+        "0019_MVR.png"
     ],
     "no_contest": [
-        "0001_FV.png",
         "0003_FV.png",
-        "0005_FV.png"
+        "0021_MVR.png"
     ]
 }

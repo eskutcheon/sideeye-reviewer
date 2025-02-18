@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 def maximize_window():
     manager = plt.get_current_fig_manager()
     backend = get_backend()
-    if backend == 'TkAgg':
+    if backend in ['TkAgg', 'tkagg']:
         if sys.platform.startswith('win'):  # For windows
             manager.window.state('zoomed')
         else:  # For Linux
