@@ -22,6 +22,7 @@ class ReviewerButton:
         """ Actually create the Axes and the Button, then attach the callback """
         ax = fig.add_axes(self.ax_pos)
         self.button_widget = Button(ax, self.label, hovercolor=self.hovercolor)
+        self.button_widget.label.set_fontsize(16)
         self.button_widget.on_clicked(self.callback)
 
     @staticmethod

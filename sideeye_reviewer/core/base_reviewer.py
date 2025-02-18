@@ -69,13 +69,12 @@ class BaseReviewer:
         )
         self.stop_button = ReviewerButton.factory(
             fig=self.fig,
+            # TODO: might want to change all instances of "STOP" buttons to "EXIT" for consistency with the viewer
             label="STOP",
             ax_pos=[0.86, 0.025, 0.10, 0.075],
             callback=self.on_stop_clicked
         )
 
-    # TODO: create callback factory method that accepts a function as an argument and wraps it in a callback function
-    #^#########################################################################
     def on_undo_clicked(self, event):
         # Undo means remove the last file->labels association from the sorter
         self.sorter.update_bin(labels=None, remove=True)
@@ -86,7 +85,6 @@ class BaseReviewer:
 
     def on_stop_clicked(self, event):
         self.stop_review()
-    #^#########################################################################
 
     def stop_review(self):
         """ writes final results and sets the internal stop flag to exit the main loop """
@@ -124,7 +122,7 @@ class BaseReviewer:
         )
 
     def display_warning(self, message="Warning!", duration=3000):
-        txt = self.fig.text(0.5, 0.15, message, ha='center', va='center', fontsize=18, color='red')
+        txt = self.fig.text(0.5, 0.3, message, ha='center', va='center', fontsize=18, color='red')
         self.fig.canvas.draw()
         def remove_text():
             try:

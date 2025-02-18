@@ -5,6 +5,7 @@ from matplotlib.animation import FuncAnimation
 from PIL import Image
 from typing import List
 # local imports
+from .reviewer_button import ReviewerButton
 from sideeye_reviewer.utils.utils import maximize_window
 
 
@@ -54,29 +55,17 @@ class SortResultsViewer:
 
     def create_buttons(self):
         self.buttons = {
-            "prev": Button(plt.axes([0.52, 0.025, 0.1, 0.075]), "PREVIOUS"),
-            "next": Button(plt.axes([0.63, 0.025, 0.1, 0.075]), "NEXT"),
-            "start": Button(plt.axes([0.74, 0.025, 0.1, 0.075]), "START"),
-            "stop": Button(plt.axes([0.85, 0.025, 0.1, 0.075]), "STOP"),
+            "prev": ReviewerButton.factory(self.fig, label="PREVIOUS", ax_pos=[0.41, 0.025, 0.1, 0.075], callback=self._on_prev_clicked),
+            "next": ReviewerButton.factory(self.fig, label="NEXT", ax_pos=[0.52, 0.025, 0.1, 0.075], callback=self._on_next_clicked),
+            "start": ReviewerButton.factory(self.fig, label="START", ax_pos=[0.63, 0.025, 0.1, 0.075], callback=self.start_animation),
+            "stop": ReviewerButton.factory(self.fig, label="STOP", ax_pos=[0.74, 0.025, 0.1, 0.075], callback=self.stop_animation),
+            "exit": ReviewerButton.factory(self.fig, label="EXIT", ax_pos=[0.85, 0.025, 0.1, 0.075], callback=self._on_close)
         }
-        # TODO: might want to add an 'exit' button to exit more cleanly
-        self.buttons["start"].on_clicked(self.start_animation)
-        self.buttons["stop"].on_clicked(self.stop_animation)
-        # We also handle next/prev in a single callback
-        self.fig.canvas.mpl_connect("button_press_event", self.on_button_click)
 
     def set_animator(self):
         secs_per_frame = 2.5
         self.ani = FuncAnimation(self.fig, self.update_frame, interval=secs_per_frame * 1000, repeat=True, cache_frame_data=False)
-        # We'll manually start/stop it by toggling self.playing_animation
-
-    def on_button_click(self, event):
-        if event.inaxes == self.buttons["next"].ax:
-            self.curr_idx = (self.curr_idx + 1) % self.num_reviewed
-            self.update_display(self.curr_idx)
-        elif event.inaxes == self.buttons["prev"].ax:
-            self.curr_idx = (self.curr_idx - 1) % self.num_reviewed
-            self.update_display(self.curr_idx)
+        # manually start/stop it by toggling self.playing_animation
 
     def update_frame(self, frame):
         if self.playing_animation:
@@ -94,6 +83,14 @@ class SortResultsViewer:
             wrap=True
         )
         self.fig.canvas.draw()
+
+    def _on_prev_clicked(self, event):
+        self.curr_idx = (self.curr_idx - 1) % self.num_reviewed
+        self.update_display(self.curr_idx)
+
+    def _on_next_clicked(self, event):
+        self.curr_idx = (self.curr_idx + 1) % self.num_reviewed
+        self.update_display(self.curr_idx)
 
     def start_animation(self, event):
         self.playing_animation = True

@@ -48,6 +48,7 @@ class SingleLabelReviewer(BaseReviewer):
             for label, color in self.legend_dict.items():
                 plt.plot([], [], color=color, label=label)
             plt.legend(loc="lower left", fontsize="medium")
+        self.fig.subplots_adjust(left=0.05, right=0.95)  # images use 0-0.95 of the width
 
     def begin_review(self, checkpoint=True):
         """ Override to add a step to create label buttons after the base figure is created but before the main loop starts. """
