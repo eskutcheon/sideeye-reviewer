@@ -1,40 +1,60 @@
 # Image Annotation Reviewer
 
-This project provides a set of tools for efficient and structured image annotation review. It includes both single-label and multi-label reviewers, as well as a results viewer for quick review of sorted data. It provides a powerful framework for structured and efficient image annotation review, with room for expansion and improvement in the future.
+This project provides a structured and modular framework for efficient image annotation review. It includes both single-label and multi-label reviewers, as well as a simple slideshow viewer for quick assessment of sorted data and additional image aspects/transformations as specified. The codebase follows a pseudo-MVC design pattern, enhancing modularity and maintainability while providing a basic framework for any general image data curation and review, with the groundwork laid for expansion and improvement in the future.
 
-The code in this project was extricated and heavily refactored from part of the codebase used in my research for data review and improvement. It was mainly written as needed to allow undergraduates without any coding experience to aid in reviewing semantic segmentation image datasets for contentious annotation choices. It can easily be extended to any groups of images
+The project originally developed in my previous research position to aid in reviewing semantic segmentation datasets (with poor annotation quality) by undergraduates without coding experience. It can easily be extended to any grouping of images, with future enhancements planned for on-the-fly generation of new images/plots.
 
 ---
 
-## Core Components
+## Core Architecture
 
-### Reviewers for Sorting
-##### **BaseReviewer (`base_reviewer.py`)**
-- Abstract base class managing the core review process.
-- Handles image display, undo functionality, and basic navigation.
+The architecture of the new modular reviewer framework follows the Model–View–Controller (MVC) design pattern often used for large-scale UI applications
+![](assets/MVC.png)
 
-##### **SingleLabelReviewer (`unilabel_reviewer.py`)**
-- Each image is assigned exactly one label using button-based selection.
-- Moves automatically to the next image upon selection.
-- Supports label legends for visual clarity.
+#### Controllers (Handling User Interactions)
+1. `BaseReviewController` (base_controller.py)
+   - Abstract base class managing shared logic for controllers.
+   - Handles image loading, file navigation, and window events.
 
-##### **MultiLabelReviewer (`multilabel_reviewer.py`)**
-- Supports multiple labels per image via checkboxes.
-- Includes a "NEXT" button to confirm selections before advancing.
-- Provides validation to ensure at least one label is chosen.
+2. `ReviewerController` (review_controller.py)
+    - **Annotation-based controller** for managing user interactions for both single-label and multi-label reviewers.
+    - Controls undo functionality, label assignment, and progress tracking.
 
-##### **ImageSorter (`sorter.py`)**
-- Manages image file handling and keeps track of sorting progress.
-- Integrates with `BinManager` to store classification results.
-- Allows checkpointing for resuming annotation sessions.
+3. `SlideshowController` (slides_controller.py)
+    - **Read-only controller** for displaying reviewed images in a slideshow format.
+    - Supports manual bidirectional navigation and auto-play for simpler reviewing.
 
 
-### Reviewers for Playback
-##### **SortResultsViewer (`viewer.py`)**
-- Read-only tool for visually inspecting sorted images.
-- Supports navigation via "NEXT" and "PREVIOUS" buttons.
-- Can auto-play through images for quick review.
+#### Views (UI and Figure Management)
+1. `BaseReviewerView` (base_viewer.py)
+    - Common UI logic for all reviewers, except for the slideshow viewer, which implements a simpler interface.
+    - Handles figure and legend creation, buttons, and image display while updating the controller on user events.
 
+2. `SingleLabelReviewerView` (unilabel_reviewer.py)
+    - UI for **single-label classification**, with dedicated buttons for each label and instant responses
+    - Allows for undo functionality with an arbitrary number of user-supplied image labels
+
+3. `MultiLabelReviewerView` (multilabel_reviewer.py)
+    - UI for **multi-label classification**, with checkboxes for label selection.
+    - Includes a "NEXT" button to confirm checkbox selections, logging chosen labels for the current image
+
+4. `SlideshowViewerView` (slides_viewer.py)
+    - **Read-only UI** for displaying sets of images in a slideshow fashion
+    - Includes navigation buttons and an optional auto-play feature
+
+
+#### Models (Data Management and Processing)
+1. `DataManager` (data_manager.py)
+    - Centralized manager for file listing, image loading, and user-defined preprocessing.
+    - Supports additional on-the-fly generation of images and plots derived from the current image(s).
+    - Future support planned for remote database integration and streamed data loading.
+
+2. Sorting Models (`BinManager` and `ImageSorter`)
+    - NOTE: these will likely be fused into a single sorting model in the near future, with planned variations as new models
+    - Manages label assignments for both single-label and multi-label workflows through a double-ended queue
+    - Manages file handling, tracking progress, and writing results to JSON.
+    - The classes are integrated for structured classification.
+    - Supports checkpointing for resuming annotation sessions - will later be extended to a "session-based" workflow loaded from a config
 
 
 
@@ -42,51 +62,72 @@ The code in this project was extricated and heavily refactored from part of the 
 
 ## Usage Examples
 
-### **Single-Label Review (`mask_review.py`)**
+### **Single-Label Review**
 ```python
-from sideeye_reviewer.core.sorter import ImageSorter
-from sideeye_reviewer.core.unilabel_reviewer import SingleLabelReviewer
+from sideeye_reviewer.models.data_manager import DataManager
+from sideeye_reviewer.controllers.review_controller import ReviewerController
+from sideeye_reviewer.views.unilabel_reviewer import SingleLabelReviewerView
 
 SORTER_LABELS = ["agree", "disagree", "uncertain"]
+# NOTE: example legend labels are based on the original project intended for judging the Valeo Woodscape Soiling Dataset
 LEGEND_LABELS = {"clean": "black", "transparent": "green", "semi-transparent": "blue", "opaque": "red"}
 
-sorter = ImageSorter(image_folders=["path/to/images"], out_dir="path/to/output", labels=SORTER_LABELS, json_name="review_output.json")
-reviewer = SingleLabelReviewer(sorter, legend_dict=LEGEND_LABELS)
-reviewer.begin_review()
+image_folders = ["path/to/images"] # or ["path/to/images1", "path/to/images2"]
+out_dir = "path/to/output"
+data_manager = DataManager(image_folders, out_dir, SORTER_LABELS, json_name="review_output.json", enable_sorting=True)
+reviewer = SingleLabelReviewerView(legend_dict=LEGEND_LABELS)
+controller = ReviewerController(data_manager, reviewer)
+controller.initialize()
 ```
 
-![](assets/single_label_example.png)
+![](assets/single_label_example.gif)
 
 
 
-### **Multi-Label Review (`contention_review.py`)**
+### **Multi-Label Review**
 ```python
-from sideeye_reviewer.core.sorter import ImageSorter
-from sideeye_reviewer.core.multilabel_reviewer import MultiLabelReviewer
+from sideeye_reviewer.models.data_manager import DataManager
+from sideeye_reviewer.controllers.review_controller import ReviewerController
+from sideeye_reviewer.views.multilabel_reviewer import MultiLabelReviewerView
 
-SORTER_LABELS = ["inaccurate_edges", "inaccurate_labels", "inaccurate_regions", "missed_border", "laziness", "other", "no_contest"]
+SORTER_LABELS = ["inaccurate_edges", "inaccurate_labels", "inaccurate_regions", "laziness", "other", "no_contest"]
 CLASS_LABELS = {"clean": "black", "transparent": "green", "semi-transparent": "blue", "opaque": "red"}
 
-sorter = ImageSorter(image_folders=["path/to/images"], out_dir="path/to/output", labels=SORTER_LABELS, json_name="review_output.json")
-reviewer = MultiLabelReviewer(sorter, legend_dict=CLASS_LABELS)
-reviewer.begin_review()
+image_folders = ["path/to/images"] # or ["path/to/images1", "path/to/images2"]
+out_dir = "path/to/output"
+data_manager = DataManager(image_folders, out_dir, SORTER_LABELS, json_name="review_output.json", enable_sorting=True)
+reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
+controller = ReviewerController(data_manager, reviewer)
+controller.initialize()
 ```
 
-![](assets/multi_label_example.PNG)
+![](assets/multilabel_example.gif)
 
 
 
-### **Results Viewer (`viewer_test.py`)**
+### **Slideshow Viewer**
 ```python
-from sideeye_reviewer.core.viewer import SortResultsViewer
+from sideeye_reviewer.models.data_manager import DataManager
+from sideeye_reviewer.controllers.slides_controller import SlideshowController
+from sideeye_reviewer.views.slides_viewer import SlideshowViewerView
 
+# example function for viewer initialization
 def show_disputed_images(file_list, img_dirs):
-    viewer = SortResultsViewer(file_list, img_dirs, "Disputed Images Viewer")
+    data_manager = DataManager(image_folders=img_dirs, file_list=file_list, enable_sorting=False)
+    viewer = SlideshowViewerView("Disputed Images Viewer", slide_duration=3) # 3 seconds per slide during auto-play
+    controller = SlideshowController(data_manager, viewer)
+    controller.initialize()
 
-show_disputed_images(["image1.jpg", "image2.jpg"], ["path/to/images"])
+show_disputed_images(["image1.jpg", "image2.jpg"], ["path/to/images"]) # or ["path/to/images1", "path/to/images2"]
 ```
 
-![](assets/viewer_example.PNG)
+![](assets/slideshow_example.gif)
+
+In all cases, single images per iteration are also supported, with plans to extend to an arbitrary number of images in the future:
+
+![](assets/single_img_grid.png)
+
+
 
 ---
 
@@ -96,14 +137,12 @@ show_disputed_images(["image1.jpg", "image2.jpg"], ["path/to/images"])
 - **Keyboard Shortcuts:** Support for quick labeling via keyboard inputs.
 - **Enhanced Undo History:** More granular control over undo actions (multi-step undo).
 - **Arbitrary Number of Images:** Allowing more than 2 images to be displayed simultaneously.
-- **Annotation Overlay Preprocessing:** Replace options for segmentation mask overlay and more general annotations.
-- **Advanced Filtering Options:** Sort and filter reviewed images by label, reviewer, or confidence score.
+- **Annotation Overlay Preprocessing:** Enable on-the-fly creation of overlays for segmentation masks, bounding boxes, and more.
+- **Advanced Filtering Options:** Sort and filter reviewed images by label, reviewer, or confidence score before review.
 
 ### **Long-Term Enhancements**
 - **AI-assisted Pre-labeling:** Integration with pre-trained ML models to suggest initial labels.
-- **Batch Processing:** Ability to label multiple images at once, primarily through pre-defined file clustering.
+- **Batch Processing:** Ability to label multiple images at once based on clustering.
 - **Collaborative Review Mode:** Versioning for multiple reviewers working on the same dataset.
 - **Multi-Image Comparison:** Side-by-side comparison of multiple images during review.
-
-
-
+- **Remote Database Integration:** Extend DataManager to support remote image sources beyond disk storage.

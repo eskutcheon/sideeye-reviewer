@@ -31,7 +31,6 @@ class SlideshowViewerView:
             self.axes = [self.axes]
         for ax in self.axes:
             ax.axis("off")
-        #! TODO: add initial image display logic - now done by the new data manager
         self.update_title(self.fig_title)
         maximize_window()
         # Positions: [left, bottom, width, height]

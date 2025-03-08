@@ -62,7 +62,8 @@ class BaseReviewerView:
         # If it's the first time, store the imshow result; otherwise update set_data().
         if len(self.canvas_images) <= ax_idx:
             # first time creation
-            im_obj = self.axs[ax_idx].imshow(image, aspect="auto")
+            aspect_ratio = "auto" if len(self.axs) > 1 else None
+            im_obj = self.axs[ax_idx].imshow(image, aspect=aspect_ratio)
             self.canvas_images.append(im_obj)
         else: # else update the existing image
             self.canvas_images[ax_idx].set_data(image)
@@ -74,11 +75,11 @@ class BaseReviewerView:
 
     def display_warning(self, message="Warning!", duration=3000):
         """ replicates the old 'display_warning()' from base_reviewer.py with purely UI functionality """
-        txt = self.fig.text(0.5, 0.3, message, ha='center', va='center', fontsize=18, color='red')
+        txt = self.fig.text(0.5, 0.3, message, ha='center', va='center', fontsize=18, color='red', backgroundcolor='#263037')
         self.fig.canvas.draw()
         def remove_text():
             try:
-                txt.remove()
+                txt.set_visible(False)
                 self.fig.canvas.draw()
             except ValueError:
                 pass

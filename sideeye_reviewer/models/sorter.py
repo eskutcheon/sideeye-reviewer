@@ -1,5 +1,7 @@
 import os
 from typing import Union, List, Tuple, Optional
+import random
+# local imports
 from .bin_manager import BinManager
 
 
@@ -12,6 +14,7 @@ class ImageSorter:
         labels: List[str],
         file_list: Optional[List[str]] = None,
         json_name: str = "sorting_output.json",
+        shuffle = False
     ):
         """
             :param image_folders: either a str or list/tuple of up to 2 directory paths
@@ -31,6 +34,7 @@ class ImageSorter:
         # if a file_list is provided, use it rather than os.listdir
         self.user_file_list = file_list
         self.sorter_labels = labels
+        self.shuffle = shuffle
         # Shared bin manager that can handle single or multiple bins
         self.bin_manager = BinManager(labels, out_dir, json_name)
         self.current_image = None
@@ -58,7 +62,9 @@ class ImageSorter:
         """ Returns the list of files to be reviewed, possibly skipping the first 'checkpoint' entries """
         all_files = self.user_file_list if self.user_file_list is not None else os.listdir(self.img_dirs[0])
         if checkpoint is not None and checkpoint < len(all_files):
-            return all_files[checkpoint:]
+            all_files = all_files[checkpoint:]
+        if self.shuffle:
+            random.shuffle(all_files)
         return all_files
 
     def get_image_paths(self, img_name: str) -> List[str]:

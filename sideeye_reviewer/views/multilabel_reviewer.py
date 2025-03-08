@@ -37,7 +37,7 @@ class MultiLabelReviewerView(BaseReviewerView):
         bottom_bound = self.stop_button.ax_pos[1] + 0.15
         height = 0.05 * num_labels
         # NOTE: may have to figure out how to reposition the existing axes to add this right
-        ax_ck = self.fig.add_axes([checkbox_bound + 0.01, bottom_bound, 0.10, height])
+        ax_ck = self.fig.add_axes([checkbox_bound + 0.01, bottom_bound, 0.12, height])
         self.fig.subplots_adjust(left=0.05, bottom = bottom_bound - 0.05, right=0.85)  # images only use 0-0.85 of the width
         # Define properties for labels and checkboxes
         label_props = {'color': ['black'] * len(labels), 'fontsize': ['large'] * len(labels)}

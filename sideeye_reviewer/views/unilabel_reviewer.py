@@ -26,7 +26,7 @@ class SingleLabelReviewerView(BaseReviewerView):
                 plt.plot([], [], color=color, label=label, linewidth=4, alpha=0.4)
             self.fig.legend(loc="lower left", fontsize="large")
         # adjust figure for space if needed
-        self.fig.subplots_adjust(left=0.05, right=0.95)  # images use 0-0.95 of the width
+        #self.fig.subplots_adjust(left=0.05, right=0.95)  # images use 0-0.95 of the width
 
     def _create_label_buttons(self, labels: List[str]):
         """ called after the base class sets up the figure and base buttons to place label-specific buttons """
