@@ -71,14 +71,3 @@ class ReviewerController(BaseReviewController):
         else:
             print("[CONTROLLER] Reached end of file list. Stopping automatically.")
             self.on_stop_clicked(None)
-
-    # def _load_image(self, idx):
-    #     """ Replaces 'redraw_current_image' or 'load_initial_image' logic. Loads from disk using the sorter, then calls the view to display """
-    #     if not self.file_list:
-    #         return
-    #     filename = self.file_list[idx]
-    #     paths = self.sorter.get_image_paths(filename)  # returns up to 2 paths
-    #     for i, p in enumerate(paths):
-    #         img = plt.imread(p)  # or use your old approach (Image.open, etc.)
-    #         self.view.display_image(img, ax_idx=i)
-    #     self.view.update_title(f"{self.view.fig_title}\n{filename}\nProgress: {idx+1}/{len(self.file_list)}")

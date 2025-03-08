@@ -11,10 +11,9 @@ class BaseReviewController:
         - Handling window close
         Subclasses should override or extend with domain-specific callbacks (label assignment, or slideshow controls)
     """
-    #def __init__(self, sorter: ImageSorterType, view: ViewerLike):
     def __init__(self, data_manager: DataManagerType, view: ViewerLike):
         """
-            :param sorter: e.g. an ImageSorter instance
+            :param data_manager: DataManager instance
             :param view:   either a reviewer-type view or a results viewer-type view
         """
         # TODO: should be giving this a more general data manager object of some sort
@@ -27,7 +26,7 @@ class BaseReviewController:
 
     def initialize(self, checkpoint: Union[bool, int] = True):
         """ called in subclasses to set up the file list from the sorter, then call the view setup """
-        # get the list of files from the sorter
+        # get the list of files (possibly sliced by the checkpoint if given)
         self.file_list = self.data_manager.get_file_list(checkpoint)
         self.num_files = len(self.file_list)
         self.current_idx = 0

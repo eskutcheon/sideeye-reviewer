@@ -6,6 +6,64 @@ The project originally developed in my previous research position to aid in revi
 
 ---
 
+## Features
+Currently, the project supports
+- sorting images by selecting user-defined labels to manually sort images into labeled "bins" via an extensive `matplotlib` GUI
+- simple playback of images within the slideshow viewer given the image paths
+
+#### Sorting Examples
+1. **Single Label Example** - a simple use case in which human reviewers evaluate image annotations:
+```json
+{
+    "agree": [
+        "0001_FV.png",
+        "0003_FV.png",
+        "0008_MVL.png",
+        "0011_MVL.png",
+        "0023_RV.png",
+        "0045_MVL.png",
+        "0047_MVL.png"
+    ],
+    "disagree": [
+        "0015_MVR.png",
+        "0017_MVR.png",
+        "0025_RV.png",
+        "0027_RV.png",
+        "0029_RV.png",
+    ],
+    "uncertain": [
+        "0043_MVL.png",
+    ]
+}
+```
+
+2. **Multilabel Example** - follow-up usage where reviewers select the reason a file was sorted as "disagree" in the previous example:
+- Note that selection of "agreed", "uncertain" and the specific reason for disagreement can be done using just the multilabel review. Multiple rounds of review aren't necessary.
+```json
+{
+    "inaccurate_edges": [],
+    "inaccurate_labels": [
+        "0003_FV.png"
+    ],
+    "inaccurate_regions": [
+        "0003_FV.png",
+        "0005_FV.png"
+    ],
+    "missed_border": [
+        "0001_FV.png"
+    ],
+    "other": [
+        "0003_FV.png"
+    ],
+    "no_contest": []
+}
+```
+
+Note that implementation of the sorting results will likely remain this simple throughout the lifetime of the project since the simplicity is what makes it a robust solution. I am planning to write more session-related metadata to the JSON files for better checkpointing, documentation, and ease in resuming review sessions.
+
+I'm also considering adding additional (equally simple) output file formats in the future.
+
+
 ## Core Architecture
 
 The architecture of the new modular reviewer framework follows the Model–View–Controller (MVC) design pattern often used for large-scale UI applications
@@ -49,8 +107,7 @@ The architecture of the new modular reviewer framework follows the Model–View�
     - Supports additional on-the-fly generation of images and plots derived from the current image(s).
     - Future support planned for remote database integration and streamed data loading.
 
-2. Sorting Models (`BinManager` and `ImageSorter`)
-    - NOTE: these will likely be fused into a single sorting model in the near future, with planned variations as new models
+2. Sorting Models (`BinManager`)
     - Manages label assignments for both single-label and multi-label workflows through a double-ended queue
     - Manages file handling, tracking progress, and writing results to JSON.
     - The classes are integrated for structured classification.

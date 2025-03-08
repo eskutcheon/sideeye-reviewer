@@ -4,6 +4,7 @@ from collections import deque
 from typing import Dict, List, Deque, Optional, Union
 
 
+# might rename to something like "SorterModel" later
 class BinManager:
     """ A unified bin manager that can handle both single-label and multi-label reviewing.
         Each time a file is sorted (or undone), we record that in sort_history so that 'undo' works the same way for single or multiple labels.
@@ -17,6 +18,9 @@ class BinManager:
         self.out_dir = out_dir
         self.json_out_path = os.path.join(out_dir, outfile_name)
         os.makedirs(self.out_dir, exist_ok=True)
+        # could just use self.sorting_dict.keys(), but this is more explicit
+        self.labels = labels
+        self.current_image = None
         # for each label in the dict, keep a deque of filenames
         self.sorting_dict: Dict[str, Deque[str]] = {}
         for lbl in labels:
@@ -24,6 +28,19 @@ class BinManager:
         # each history entry is {filename: [labels]} so undo ops are straightforward
         self.sort_history: Deque[Dict[str, List[str]]] = deque()
         self.json_contents: Dict[str, List[str]] = {}
+
+    def update_bin(self, labels, remove=False):
+        """ For single-label usage, 'labels' will be a string. For multi-label usage, 'labels' will typically be a list of strings.
+            We unify them internally in BinManager.
+        """
+        if remove:
+            self.undo_sort()
+        else:
+            self.add_filename(labels, self.current_image)
+
+    def set_current_image(self, img_name: str):
+        # might want to add this to the reviewer classes instead
+        self.current_image = img_name
 
     def add_filename(self, labels: Union[str, List[str]], filename: str):
         """ Adds a filename to one or more bins
