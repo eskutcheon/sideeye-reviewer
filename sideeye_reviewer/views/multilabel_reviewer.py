@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+from typing import List, Tuple
 from matplotlib.widgets import CheckButtons
 # local imports
+from ..types import ControllerLike
 from .base_viewer import BaseReviewerView
 from .reviewer_button import ReviewerButton
 from ..utils.utils import get_button_axes
@@ -13,45 +15,60 @@ class MultiLabelReviewerView(BaseReviewerView):
         self.legend_dict = legend_dict
         self.next_button = None
         self.checkboxes = None
+        self.use_summary = False
 
-    def setup_gui(self, controller, labels, num_axes=1):
-        super().setup_gui(controller, num_axes)
-        # Create checkboxes and next button
+    def setup_gui(
+        self,
+        controller: ControllerLike,
+        labels: List[str],
+        num_axes: int = 1,
+        use_summary: bool = False,
+    ):
+        #super().setup_gui(controller, num_axes)
+        self.use_summary = use_summary
+        use_legend = bool(self.legend_dict)
+        n_btn = 3  # 3 for the base buttons (STOP, UNDO) and NEXT for "NEXT" for this subclass
+        super().setup_gui(controller, num_axes, num_buttons = n_btn, use_legend=use_legend, use_summary = use_summary, use_checkboxes = True)
+        # create checkboxes and next button
         self._create_checkboxes(labels)
         self.add_next_button()
-        # Possibly create a legend the same way
+        # optionally create a legend the same way
         self._create_legend()
+        self._create_summary_box()
 
     def _create_legend(self):
-        # Possibly create a legend if needed
+        # bottom left corner to place the legend
         if self.legend_dict:
+            position: Tuple[float, float] = self.layout.get_axes("legend").get_position().p0
             for label, color in self.legend_dict.items():
-                plt.plot([], [], color=color, label=label, linewidth=4, alpha=0.4)
-            self.fig.legend(loc="lower left", fontsize="large")
+                plt.plot([], [], color=color, label=label, linewidth=6, alpha=0.4)
+            self.fig.legend(bbox_to_anchor = position, loc="lower left", fontsize="x-large")
+
+        # adjust figure for space if needed
+        #self.fig.subplots_adjust(left=0.05, right=0.95)  # images use 0-0.95 of the width
 
     def _create_checkboxes(self, labels):
         """ Create the checkboxes for multi-label usage """
         num_labels = len(labels)
-        # REMINDER: order is [left, bottom, width, height]
-        checkbox_bound = max(self.undo_button.ax_pos[0], self.stop_button.ax_pos[0])
-        bottom_bound = self.stop_button.ax_pos[1] + 0.15
-        height = 0.05 * num_labels
-        # NOTE: may have to figure out how to reposition the existing axes to add this right
-        ax_ck = self.fig.add_axes([checkbox_bound + 0.01, bottom_bound, 0.12, height])
-        self.fig.subplots_adjust(left=0.05, bottom = bottom_bound - 0.05, right=0.85)  # images only use 0-0.85 of the width
+        # # REMINDER: order is [left, bottom, width, height]
+        ax_checkboxes = self.layout.get_axes("checkboxes")
         # Define properties for labels and checkboxes
-        label_props = {'color': ['black'] * len(labels), 'fontsize': ['large'] * len(labels)}
-        check_props = {'facecolor': ['blue'] * len(labels), 'sizes': [75] * len(labels)}
-        frame_props = {'edgecolor': 'black', 'sizes': [125] * len(labels), 'facecolor': 'white'}
-        self.checkboxes = CheckButtons(ax_ck, labels, label_props=label_props, check_props=check_props, frame_props=frame_props)
-        self.checkboxes.ax.set_facecolor('lightgray')
-        self.checkboxes.ax.set_title("Select all that apply", fontsize="x-large")
+        label_props = {'color': ['black'] * num_labels, 'fontsize': ['x-large'] * num_labels}
+        check_props = {'facecolor': ['blue'] * num_labels, 'sizes': [100] * num_labels}
+        frame_props = {'edgecolor': 'black', 'sizes': [200] * num_labels, 'facecolor': 'white'}
+        self.checkboxes = CheckButtons(ax_checkboxes, labels, label_props=label_props, check_props=check_props, frame_props=frame_props)
+        self.checkboxes.ax.set_title("Select all that apply.", fontsize="x-large")
+        
+        from pprint import pprint
+        pprint(vars(self.fig))
+        print()
+        print(self.checkboxes)
+        pprint(vars(self.checkboxes))
 
     def add_next_button(self):
-        right_bound = min(self.undo_button.ax_pos[0] - 0.01, self.stop_button.ax_pos[0] - 0.01)
-        left_bound = max(0.05, right_bound - 0.1)
-        # NOTE: selecting first element since there's only one in this case and that's how the factory expects it
-        positions = get_button_axes(num_buttons=1, left_bound=left_bound, right_bound=right_bound)[0]
+        # # NOTE: selecting first element since there's only one in this case and that's how the factory expects it
+        # positions = get_button_axes(num_buttons=1, left_bound=left_bound, right_bound=right_bound)[0]
+        positions = self.layout.get_axes("buttons")[-1].get_position().bounds
         self.next_button = ReviewerButton.factory(
             fig=self.fig,
             label="NEXT",
@@ -70,3 +87,8 @@ class MultiLabelReviewerView(BaseReviewerView):
         if clear_after:
             self.checkboxes.clear()
         return chosen
+
+    def _create_summary_box(self):
+        """ ensure the summary box is properly formatted """
+        if self.use_summary:
+            self.update_summary("Awaiting Image Review...")

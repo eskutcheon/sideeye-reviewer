@@ -18,6 +18,7 @@ class BaseReviewController:
         """
         # TODO: should be giving this a more general data manager object of some sort
         self.data_manager = data_manager
+        self.images_per_fig = self.data_manager.images_per_batch
         self.view = view
         self.file_list: List[str] = []
         self.num_files = 0
@@ -30,7 +31,7 @@ class BaseReviewController:
         self.file_list = self.data_manager.get_file_list(checkpoint)
         self.num_files = len(self.file_list)
         self.current_idx = 0
-        labels = self.get_category_labels()
+        # labels = self.get_category_labels()
 
     def get_category_labels(self):
         # TODO: should probably be careful with this kind of indirect access and return a copy
@@ -48,7 +49,7 @@ class BaseReviewController:
             self.view.display_image(img, ax_idx=i)
         # if view has a title or progress info:
         print_idx = self.num_files + idx + 1 if idx < 0 else idx + 1
-        self.view.update_title(f"{self.view.fig_title}\n{filename}\nProgress: {print_idx}/{len(self.file_list)}")
+        self.view.update_title(f"{self.view.fig_title}", f"{filename}\nProgress: {print_idx}/{len(self.file_list)}")
 
 
     def on_window_closed(self):

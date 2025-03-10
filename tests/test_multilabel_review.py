@@ -44,4 +44,4 @@ if __name__ == "__main__":
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'results', 'disputed_labels')
     # folders passed to the ImageSorter constructor must be in a list, even if singleton
     #begin_review_v1([image_train_folder, label_train_folder], output_dir, None, "multilabel_output.json") # train review
-    begin_review_v2([image_train_folder, label_train_folder], output_dir, file_list=None, num_axes=1)
+    begin_review_v2([image_train_folder, label_train_folder], output_dir, file_list=None, num_axes=2)
