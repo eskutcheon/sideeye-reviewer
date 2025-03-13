@@ -29,24 +29,17 @@ class SingleLabelReviewerView(BaseReviewerView):
         # Now create label-specific buttons
         self._create_label_buttons(labels)
         # Optionally create the legend
-        self._create_legend()
+        self._create_legend(self.legend_dict)
         # initialize summary box with filler text
         self._create_summary_box()
-
-    def _create_legend(self):
-        # bottom left corner to place the legend
-        if self.legend_dict:
-            position: Tuple[float, float] = self.layout.get_axes("legend").get_position().p0
-            for label, color in self.legend_dict.items():
-                plt.plot([], [], color=color, label=label, linewidth=6, alpha=0.4)
-            self.fig.legend(bbox_to_anchor = position, loc="lower left", fontsize="x-large")
-        # adjust figure for space if needed
-        #self.fig.subplots_adjust(left=0.05, right=0.95)  # images use 0-0.95 of the width
 
     def _create_label_buttons(self, labels: List[str]):
         """ called after the base class sets up the figure and base buttons to place label-specific buttons """
         # for each label, create a button, aligned at the bottom, right side
-        button_axes: List[plt.Axes] = self.layout.get_axes("buttons")[::-1]
+        #! FIXME: buttons no longer located in PaneledFigureWrapper.created_axes - call new method for PaneledFigureWrapper.buttons
+            #! also, buttons are now returned as the actual axes objects - fix this too
+        #button_axes: List[plt.Axes] = self.layout.get_axes("buttons")[::-1]
+        button_axes: List[plt.Axes] = self.layout.get_button_axes()
         num_btn = len(button_axes)
         open_positions = [pos.get_position().bounds for i, pos in enumerate(button_axes) if self.buttons_assigned[num_btn - i] is False]
         for lbl, pos in zip(labels, open_positions):
@@ -57,8 +50,3 @@ class SingleLabelReviewerView(BaseReviewerView):
                 callback = self.controller.get_on_label_clicked_cb(lbl)
             )
             self.label_buttons.append(btn)
-
-    def _create_summary_box(self):
-        """ Ensures the summary box is properly formatted. """
-        if self.use_summary:
-            self.update_summary("Awaiting Label Selection...")

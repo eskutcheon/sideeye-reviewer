@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from .reviewer_button import ReviewerButton
 from ..types import ControllerLike
 from ..utils.utils import maximize_window
-from ..layouts.layout_manager import ReviewFigureLayout
+from ..layouts.layout_manager import FigureLayoutManager
 
 
 """
@@ -24,8 +24,8 @@ class BaseReviewerView:
     def __init__(self, fig_title="Image Reviewer"):
         self.fig_title = fig_title
         self.fig = None
-        self.layout = None  # ReviewFigureLayout instance
-        self.axs = []
+        self.layout = None  # FigureLayoutManager instance
+        ###self.axs = []
         self.canvas_images = []
         self._stop_requested = False
         self.controller: ControllerLike = None  # set when we initialize the UI with setup_gui() called from the controller
@@ -59,7 +59,7 @@ class BaseReviewerView:
             use_checkboxes = use_checkboxes
         )
         self.fig = self.layout.fig
-        self.axs = self.layout.axes
+        ###self.axs = self.layout.axes
         plt.ion()
         self.update_title(self.fig_title)
         maximize_window() # might need to come before plt.show
@@ -70,7 +70,7 @@ class BaseReviewerView:
 
     def generate_layout(self, num_axes: int = 1, num_buttons: int = 2, labels: List[str] = None, use_legend: bool = True, use_summary: bool = False, use_checkboxes: bool = False):
         """ Generate the layout for the figure, subplots, etc. """
-        self.layout = ReviewFigureLayout(
+        self.layout = FigureLayoutManager(
             num_images = num_axes,
             num_buttons = num_buttons,
             labels = labels,
@@ -78,13 +78,15 @@ class BaseReviewerView:
             use_summary = use_summary,
             use_checkboxes = use_checkboxes
         )
-        self.layout.create_layout()
-        self.buttons_assigned = [False] * len(self.layout.get_axes("buttons"))
+        self.layout.create_figure_layout()
+        self.buttons_assigned = [False] * len(self.layout.get_button_axes())
 
 
     def _create_base_buttons(self):
         """ Creates STOP and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
-        btn_axes: List[plt.Axes] = self.layout.get_axes("buttons")
+        #! FIXME: buttons no longer located in PaneledFigureWrapper.created_axes - call new method for PaneledFigureWrapper.buttons
+            #! also, buttons are now returned as the actual axes objects - fix this too
+        btn_axes: List[plt.Axes] = self.layout.get_button_axes()
         undo_ax = btn_axes[1]
         stop_ax = btn_axes[0]
         self.buttons_assigned[:1] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
@@ -103,16 +105,38 @@ class BaseReviewerView:
             callback = self.controller.on_stop_clicked
         )
 
+    def _create_summary_box(self):
+        """ ensures the summary box is properly instantiated """
+        if self.use_summary:
+            #ax = self.layout.get_axes("summary")
+            self.update_summary("Awaiting Label Selection...")
+
     def _create_label_buttons(self, labels):
         raise NotImplementedError("Subclasses must implement this method to create label buttons")
 
-    def _create_legend(self):
-        raise NotImplementedError("Subclasses must implement this method to create a legend")
+    # def _create_legend(self):
+    #     raise NotImplementedError("Subclasses must implement this method to create a legend")
+    def _create_legend(self, legend_dict: Dict[str, str] = None):
+        # bottom left corner to place the legend
+        if legend_dict:
+            legend_kwargs = {
+                "loc": "lower left",
+                "fontsize": "x-large",
+            }
+            position = self.layout.get_panel_position("left")
+            if position:
+                #position: Tuple[float, float] = self.layout.get_axes("legend").get_position().p0
+                legend_kwargs["bbox_to_anchor"] = self.layout.get_panel_position("left")[:2]
+            for label, color in legend_dict.items():
+                plt.plot([], [], color=color, label=label, linewidth=6, alpha=0.4)
+            self.fig.legend(**legend_kwargs)
 
     def display_image(self, image, ax_idx=0):
         """ show or update an image on self.axs; adjust accordingly for multiple axes """
         # if it's the first call, store the imshow result; otherwise update set_data().
-        ax = self.layout.get_subaxes("images", ax_idx)
+        #! FIXME: images no longer located in PaneledFigureWrapper.created_axes - call new method for PaneledFigureWrapper.image_axes
+            #! also, buttons are now returned as the actual axes objects - fix this too
+        ax = self.layout.get_image_subaxes(ax_idx)
         if len(self.canvas_images) > ax_idx:
             self.canvas_images[ax_idx].set_data(image)
         else:

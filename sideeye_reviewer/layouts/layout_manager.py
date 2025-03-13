@@ -1,87 +1,14 @@
 import matplotlib.pyplot as plt
-from matplotlib.textpath import TextPath
-from matplotlib.font_manager import FontProperties
-import numpy as np
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable
 # local imports
-from .axes_data import (
-    LegendAxesData,
-    SummaryAxesData,
-    ButtonAxesData,
-    CheckboxAxesData,
-    ButtonPanelAxesData,
-    AXES_PADDING, # padding between axes in the figure
-    BUTTON_HEIGHT
-)
-
-def disable_all_axis_elements():
-    """ went through hell debugging this, so this is probably the easiest solution I'm gonna get for now """
-    plt.rcParams['axes.spines.left'] = False
-    plt.rcParams['axes.spines.right'] = False
-    plt.rcParams['axes.spines.top'] = False
-    plt.rcParams['axes.spines.bottom'] = False
-    plt.rcParams['xtick.bottom'] = False
-    plt.rcParams['xtick.labelbottom'] = False
-    plt.rcParams['ytick.labelleft'] = False
-    plt.rcParams['ytick.left'] = False
-
-def measure_checkbox_labels(labels, main_fig_size=(12, 7), fontsize=16, line_spacing=1.2):
-    """ returns (total_width, total_height) in "text units" for stacked labels,
-        computed purely via text path metrics (no figure or event loop).
-    """
-    # create FontProperties instance for desired font & size
-    font = FontProperties(size=fontsize)
-    # track bounding box extremes for each label - subsequent labels placed at negative y offsets => "stacking" downward
-    min_x, min_y, max_x, max_y = np.inf, np.inf, -np.inf, -np.inf
-    baseline_y = 0.0
-    # iterate over labels while tracking extents
-    for lbl in labels:
-        # create TextPath at (x=0, y=baseline_y)
-        tp = TextPath(xy=(0, baseline_y), s=lbl, prop=font)
-        # textpath's bounding box => a matplotlib.path.Path in user coords
-        bbox = tp.get_extents()
-        # union bounding box
-        min_x = min(min_x, bbox.x0)
-        min_y = min(min_y, bbox.y0)
-        max_x = max(max_x, bbox.x1)
-        max_y = max(max_y, bbox.y1)
-        # typical line spacing = line_spacing * single-line offset
-        line_height = (bbox.y1 - bbox.y0) * line_spacing
-        # reduce baseline downward for next label
-        baseline_y -= line_height
-    total_w_pts = max_x - min_x
-    total_h_pts = max_y - min_y
-    # convert from points to inches (1 point = 1/72 inch)
-    width_inch  = total_w_pts  / 72.0
-    height_inch = total_h_pts / 72.0
-    # convert to fraction of your main figure size
-    fig_w_inch, fig_h_inch = main_fig_size
-    width_fraction  = width_inch  / fig_w_inch
-    height_fraction = height_inch / fig_h_inch
-    # add a bit of padding so text doesn’t clip
-    width_fraction  *= 0.7
-    #height_fraction *= 0.8
-    return width_fraction, height_fraction
+from .utils import disable_all_axis_elements, measure_checkbox_labels, compute_button_positions
+from .axes_data import ButtonAxesData, CheckboxAxesData, SummaryAxesData, LegendAxesData
+from .figure_wrapper import PanelData, PaneledFigureWrapper
+from .figure_defaults import ConstFigureDefaults
 
 
-# def approximate_checkbox_size(labels, fontsize=14, char_width_factor=0.6, line_spacing=1.2):
-#     """
-#     Very rough approximation: each char ~ char_width_factor * fontsize wide,
-#     each line ~ fontsize * line_spacing high.
-#     Returns (approx_width, approx_height) in "pixel-ish" units if you treat fontsize as px.
-#     """
-#     if not labels:
-#         return (0.0, 0.0)
-#     max_chars = max(len(lbl) for lbl in labels)
-#     max_width = max_chars * char_width_factor * fontsize
-#     total_height = len(labels) * fontsize * line_spacing
-#     # Add some padding
-#     return (max_width * 1.1, total_height * 1.1)
-
-
-class ReviewFigureLayout:
-    """
-        Manages:
+class FigureLayoutManager:
+    """ Manages:
         1) A row (or sub-row) of image Axes for 1..N images.
         2) An optional right-side region for a legend or checkboxes.
         3) A bottom row for horizontally aligned buttons.
@@ -104,172 +31,133 @@ class ReviewFigureLayout:
         if num_images > self.MAX_IMG_PER_FIGURE:
             raise ValueError(f"Too many images ({num_images}) for a single figure. Max is {self.MAX_IMG_PER_FIGURE}.")
         self.num_images = num_images
+        self.num_buttons = num_buttons # will vary according to the view mode, not just the number of labels
+        
+        # should be set from the view classes later - defining it here for now at least keeps things neater
+        self.using_figure_elements: Dict[str, bool] = {
+            # NOTE: unfinished but I'm going to initialize it here for now to clean things up - eventually this wouldn't be set in the constructor
+            "legend": use_legend,
+            "checkboxes": use_checkboxes,
+            "summary": use_summary,
+        } # track which figure elements are being used (legend, checkboxes, summary box, etc.)
+        self.panel_defaults = ConstFigureDefaults()
+        self.manager = PaneledFigureWrapper(fig_size = self.FIGURE_DIMS)
+        
+        ###^ may not keep this
         self.checkbox_dims = None
-        #import sys
         if labels and use_checkboxes:
             self.checkbox_dims = measure_checkbox_labels(labels)
             #self.checkbox_dims = approximate_checkbox_size(labels)
-            print("checkbox dims: ", self.checkbox_dims)
-            #sys.exit(0)
-        self.use_legend = use_legend
-        self.use_checkboxes = use_checkboxes
-        self.use_summary = use_summary
-        self.num_buttons = num_buttons
         # store the actual Axes objects in a dictionary for later access
-        self.axes: Dict[str, plt.Axes] = {}
-        # may also want to store the final figure reference
-        self.fig: Optional[plt.Figure] = None
-
-    def create_layout(self):
-        """ Dynamically creates the layout with adaptable axes for images, legends, checkboxes, summary boxes, and buttons """
-        #has_right_column = self.use_summary or self.use_checkboxes
-        # create the figure that everything will be based on
-        # self.fig = plt.figure(figsize=(12, 7), subplotpars={'wspace': 0.1}) # or gridspec_kw - formerly used in plt.subplots
-        self.fig = plt.figure(figsize=self.FIGURE_DIMS)
-        # NOTE: writing these as steps because the order of creation matters for dynamically determining the layout
-        # 1. create bottom row for right-aligned buttons - easiest to base other relative axes on the panel's position
-        self._create_button_axes()
-        buttons_top = self.axes["button_panel"].get_position().y1  # Top of button panel
-        #buttons_top = self.axes["button_panel"].get_position().bounds[1] + self.axes["button_panel"].get_position().bounds[3]
-        # 2. optionally create legend in the bottom left corner
-        legend_top = 0.3
-        if self.use_legend:
-            self._create_legend(buttons_top) # default placement: left of button panel
-            # top bound of legend to align image axes
-            legend_top = self.axes["legend"].get_position().y1 + AXES_PADDING
-        # 3. optionally create checkboxes (above button panel)
-        if self.use_checkboxes:
-            checkboxes_bottom = buttons_top + AXES_PADDING
-            self._create_checkboxes(checkboxes_bottom)
-        # 4. optionally create summary box (above checkboxes or centered with the img axes' position
-        if self.use_summary:
-            checkboxes_top = self.axes["button_panel"].get_position().y1 + AXES_PADDING
-            if self.use_checkboxes:
-                checkboxes_top = self.axes["checkboxes"].get_position().y1 + AXES_PADDING
-            self._create_summary_box(checkboxes_top)
-        # 5. assign remaining space to image axes
-        self._create_image_axes(legend_top)
+        #self.axes: Dict[str, plt.Axes] = {}
+        ###^
 
 
-    def _create_legend(self, button_top):
-        """ Creates a dynamically scaled legend to fit within available space. """
-        legend_height = button_top + 0.05  # TODO: adjust height to fit labels
-        legend_ax_obj = LegendAxesData()
-        # set legend height and use defaults on all other axes properties
-        legend_ax_obj.set_ax_pos([legend_height], [3])
-        self.axes["legend"] = legend_ax_obj.create_axes_object(self.fig)
-
-
-    def _create_checkboxes(self, checkboxes_bottom):
-        """ Creates checkboxes aligned above the button panel. """
-        checkbox_ax_obj = CheckboxAxesData()
-        kwargs = {"pos": [checkboxes_bottom], "idx": [1]}  # set checkbox height
-        if self.checkbox_dims:
-            # set checkbox width dynamically based on the longest label
-            kwargs["pos"].append(1 - self.checkbox_dims[0] - AXES_PADDING)  # left bound of checkbox column
-            kwargs["pos"].extend(self.checkbox_dims)
-            kwargs["idx"].extend([0, 2, 3])
-        # set checkbox bottom bound and use defaults on all other axes properties
-        checkbox_ax_obj.set_ax_pos(**kwargs)
-        self.axes["checkboxes"] = checkbox_ax_obj.create_axes_object(self.fig)
-
-    def _create_summary_box(self, checkboxes_top):
-        """ Creates a summary box aligned dynamically with checkboxes. """
-        summary_ax_obj = SummaryAxesData()
-        bottom = checkboxes_top + AXES_PADDING if self.use_checkboxes else 0.5 - (summary_ax_obj.ax_pos[3]/2)  # else center vertically
-        kwargs = {"pos": [bottom], "idx": [1]}  # set summary height
-        if self.checkbox_dims:
-            # set summary width dynamically based on the longest label
-            kwargs["pos"].append(1 - self.checkbox_dims[0] - AXES_PADDING)  # left bound of checkbox column
-            kwargs["pos"].extend(self.checkbox_dims)
-            kwargs["idx"].extend([0, 2, 3])
-        summary_ax_obj.set_ax_pos(**kwargs)
-        self.axes["summary"] = summary_ax_obj.create_axes_object(self.fig)
-
-
-    def _create_image_axes(self, bottom_bound):
-        """ Allocates remaining space for image axes. """
+    def create_figure_layout(self):
+        """ define default panels and build them as subfigures """
+        self._set_bottom_panel()
+        self._set_left_panel()
+        self._set_right_panel()
+        self._set_main_panel()
+        # phase 1: create the figure and subfigures from general panel bounding boxes
         num_img_rows = self._compute_image_rows()
         num_img_cols = self._compute_image_cols()
-        # FIXME: work with existing axes to determine the available space for images and judge by the legend top, not right bound
-        # Determine right bound (left of summary/checkbox column, if present)
-        if self.use_summary or self.use_checkboxes:
-            try:
-                image_right_bound = self.axes["summary"].get_position().x0 - AXES_PADDING
-            except KeyError:
-                image_right_bound = self.axes["checkboxes"].get_position().x0 - AXES_PADDING
-        else:
-            image_right_bound = 0.95  # Full width available
-        # Compute figure width and height dynamically
-        image_ax_width = image_right_bound - AXES_PADDING
-        image_ax_height = bottom_bound - AXES_PADDING
-        # Create subplots inside self.fig (avoids opening a new figure)
-        img_axes = self.fig.subplots(
-            num_img_rows,
-            num_img_cols,
-            width_ratios = [image_ax_width] * num_img_cols,
-            height_ratios = [image_ax_height] * num_img_rows,
-            gridspec_kw = {'wspace': 0.1} #, 'hspace': 0.1}
-        )
-        self.fig.subplots_adjust(
-            left = 5*AXES_PADDING,
-            right = image_right_bound,
-            bottom = bottom_bound - AXES_PADDING
-        )
-        # flatten axes if multiple rows exist
-        self.axes["images"] = []
-        img_axes: List[plt.Axes] = img_axes.flatten() if isinstance(img_axes, Iterable) else [img_axes]
-        for i in range(self.num_images):
-            img_axes[i].set_aspect("auto", adjustable="box")
-            img_axes[i].axis("off")
-            self.axes["images"].append(img_axes[i])
-        # hide any unused image axes
-        for ax in img_axes[self.num_images:]:
-            ax.set_visible(False)
+        #? NOTE: still creates an AxesData object for each image, but it's done in the PaneledFigureWrapper
+        #self.manager.create_image_axes(self.num_images, num_img_rows, num_img_cols)
+        self.manager.create_paneled_figure(self.num_images, num_img_rows, num_img_cols)
+        # phase 2: place AxesData inside each panel's subfigure and create the actual Axes objects in subfigures
+        #self._create_image_axes()
+        self.manager.place_figure_elements()
 
 
-    def _create_button_axes(self):
+    def _set_bottom_panel(self):
+        """ set bottom panel for buttons using dynamic sizing """
+        # this one will always be plotted so no need to check self.using_figure_elements, but we may have need to
+            # adjust the size based on other elements such as when I finally add two (or more) rows of buttons
+        if self.num_buttons == 0:
+            raise RuntimeError("Something went wrong; no buttons were created.")
+        #TODO: eventually want to tune these dimensions based on the number of buttons and possibly the space needed by the left panel
+        panel_idx = tuple([1, 1])
+        bottom_panel_defaults = self.panel_defaults.get_panel_defaults("bottom")
+        print("bottom panel defaults:", bottom_panel_defaults)
+        bottom_panel = PanelData(name="bottom", grid_idx=panel_idx, **bottom_panel_defaults)
+        self.manager.add_panel("bottom", bottom_panel)
+        buttons = self._create_button_axes(bottom_panel.left, bottom_panel.left + bottom_panel.width)
+        for btn in buttons:
+            self.manager.add_axes_data_to_panel("bottom", btn)
+
+
+    def _set_left_panel(self):
+        """ set left panel for summary or static info, and optionally the legend """
+        #? NOTE:: when not self.using_figure_elements["summary"], we still need to set the legend one way or another but no need
+        #? NOTE: to make the left panel just for it, so maybe check for the left panel when making the main panel since that needs to be done anyway
+        if self.using_figure_elements["summary"]:
+            # TODO: eventually code should go here for dynamically determining the panel's size and position based on summary box contents' length
+            left_panel_defaults = self.panel_defaults.get_panel_defaults("left")
+            print("left panel defaults:", left_panel_defaults)
+            left_panel = PanelData(name="left", grid_idx=(0, 0), **left_panel_defaults)
+            self.manager.add_panel("left", left_panel)
+            self.manager.add_axes_data_to_panel("left", self._create_summary_axes())
+
+
+    def _set_right_panel(self):
+        """ right panel for non-button interactive elements (e.g. checkboxes) """
+        #~ ... code for dynamically determining the panel's size and position goes here (based on elements in self.using_figure_elements)
+        if self.using_figure_elements["checkboxes"]:
+            panel_idx = tuple([0, 1 + int(self.manager.panel_exists("left"))])
+            right_panel_defaults = self.panel_defaults.get_panel_defaults("right")
+            print("right panel defaults:", right_panel_defaults)
+            right_panel = PanelData(name="right", grid_idx=panel_idx, **right_panel_defaults)
+            self.manager.add_panel("right", right_panel)
+            self.manager.add_axes_data_to_panel("right", self._create_checkboxes())
+
+    def _set_main_panel(self):
+        """ set main panel for images in the center """
+        #~ ... code for dynamically determining the panel's size and position goes here (based on elements in self.using_figure_elements)
+        main_panel_kwargs = self.panel_defaults.get_panel_defaults("main")
+        print("main panel defaults:", main_panel_kwargs)
+        panel_idx = tuple([0, int(self.manager.panel_exists("left"))])
+        if not self.using_figure_elements["checkboxes"]:
+            right_panel_defaults = self.panel_defaults.get_panel_defaults("right")
+            # main_panel_kwargs["right"] = right_panel_defaults["right"]
+            main_panel_kwargs["width"] += right_panel_defaults["width"]
+            # may need to adjust the bottom but for now they should be the same
+        if not self.using_figure_elements["summary"]:
+            left_panel_defaults = self.panel_defaults.get_panel_defaults("left")
+            main_panel_kwargs["left"] = left_panel_defaults["left"]
+            main_panel_kwargs["width"] += left_panel_defaults["width"]
+            # shouldn't mess with the bottom panel position since it defaults to the bottom of the figure
+        main_panel = PanelData(name="main", grid_idx=panel_idx, **main_panel_kwargs)
+        self.manager.add_panel("main", main_panel)
+
+    ###### functions for creating the axes objects ######
+    def _create_legend_axes(self):
+        # might leave this one to be created entirely within the PanelData object since it autofits to "loc" based on label lengths
+        pass
+
+    def _create_button_axes(self, left_bound: float, right_bound: float) -> List[ButtonAxesData]:
         """ Creates a bottom-aligned button panel. """
-        panel_ax_obj = ButtonPanelAxesData()
-        print("panel axes color: ", panel_ax_obj.color)
-        self.axes["button_panel"] = panel_ax_obj.create_axes_object(self.fig)
-        #self.axes["button_panel"].set_visible(True)  # just to visualize
         # compute button positions (right-aligned)
-        #~ NOTE: still considering creating the legend first to make it wider, just in case labels are long
-        # setting the left and right bound just in case the defaults here ever change from axes_data.py
-        left_bound = self.axes["button_panel"].get_position().x0  # left bound of button panel
-        right_bound = self.axes["button_panel"].get_position().x1  # right bound of button panel
-        button_positions = self._compute_button_positions(self.num_buttons, left_bound, right_bound)
-        self.axes["buttons"] = []
+        button_positions = compute_button_positions(self.num_buttons, left_bound, right_bound)
+        button_list = []
         for pos in button_positions:
+            print("button position: ", pos)
             # create a new button Axes object for each button
-            btn_ax_obj = ButtonAxesData(ax_pos = pos)
-            self.axes["buttons"].append(btn_ax_obj.create_axes_object(self.fig))
+            # TODO: need to return button_positions as a dictionary from compute_button_positions and pass **kwargs later
+            button_list.append(ButtonAxesData(*pos))
+        return button_list
 
-    def _compute_button_positions(self, num_buttons: int, left_bound = 0.3, right_bound = 0.95) -> List[List[float]]:
-        """ Re-implement get_button_axes using figure-relative coordinates - bottom right aligned """
-        def get_total_width(w: float, s: float) -> float:
-            return (w + s) * num_buttons - s
-        width, spacing = 0.1, 0.01
-        total_width = get_total_width(width, spacing)
-        # rescale if total width exceeds available space
-            # eventually, might want to allocate enough vertical space (more than the default 0.15) to have extra button rows
-        if total_width > right_bound - left_bound:
-            scale = (right_bound - left_bound)/total_width
-            width *= scale
-            spacing *= scale
-            total_width = get_total_width(width, spacing)
-        padding = (right_bound - left_bound - total_width)/2
-        left_bound += padding
-        positions = []
-        for i in range(num_buttons):
-            #left = left_bound + i*(width + spacing)
-            right = right_bound - (i+1)*(width + spacing)
-            # keep the bottom at 0.025 and the height at 0.075 so that the top of the buttons are all at 0.1
-            #positions.append([left, AXES_PADDING, width, BUTTON_HEIGHT])
-            positions.append([right, AXES_PADDING, width, BUTTON_HEIGHT])
-        return positions
+    def _create_summary_axes(self) -> SummaryAxesData:
+        """ Creates a summary box aligned dynamically with checkboxes """
+        # use defaults for now and maybe implement the dynamic sizing later
+        return SummaryAxesData()
+        # set summary height and use defaults on all other axes properties
 
+    def _create_checkboxes(self) -> CheckboxAxesData:
+        """ Creates checkboxes aligned above the button panel. """
+        # use defaults for now and maybe implement the dynamic sizing later
+        return CheckboxAxesData()
+        # set checkbox bottom bound and use defaults on all other axes properties
 
     def _compute_image_cols(self) -> int:
         """ dynamically calculates the number of columns needed based on image counts """
@@ -279,20 +167,45 @@ class ReviewFigureLayout:
         """ calculates the number of rows needed for the given image count """
         return (self.num_images // self.MAX_IMG_COLS) + (1 if self.num_images % self.MAX_IMG_COLS else 0)
 
-    def get_axes(self, name: str) -> Optional[Union[plt.Axes, List[plt.Axes]]]:
-        """ Utility to retrieve an Axes reference by name (e.g. "legend", "summary", "button_panel") """
-        return self.axes.get(name, None)
+    # def _create_image_axes(self):
+    #     """ Create one or more image axes in the subfigure of the main panel """
+    #     num_img_rows = self._compute_image_rows()
+    #     num_img_cols = self._compute_image_cols()
+    #     #? NOTE: still creates an AxesData object for each image, but it's done in the PaneledFigureWrapper
+    #     self.manager.create_image_axes(self.num_images, num_img_rows, num_img_cols)
 
-    def get_subaxes(self, name: str, idx: int) -> plt.Axes:
-        """ Utility to retrieve a list of sub-axes by name (e.g. "images", "buttons") and by index (self.axes[name][idx]) """
+    def get_subfigure(self, panel_name: str) -> plt.Figure:
+        """ Returns the subfigure for the given panel name. """
+        if not self.manager.panel_exists(panel_name):
+            raise ValueError(f"Panel '{panel_name}' does not exist.")
+        subfig_idx = self.manager.panels[panel_name].fig_idx
+        return self.fig.subfigs[subfig_idx]
+
+    def get_axes(self, panel_name: str, axes_label: str):
+        return self.manager.get_axes(panel_name, axes_label)
+
+    def get_image_axes(self):
+        return self.manager.images
+
+    def get_image_subaxes(self, idx):
         try:
-            return self.axes.get(name, [])[idx]
+            return self.manager.images[idx]
         except IndexError:
-            raise IndexError(f"Index {idx} out of range for axes list '{name}'.")
+            raise IndexError(f"Image index {idx} out of range in the layout's list of image axes.")
 
-    def finalize(self):
-        """ final processing steps - e.g. 'tight_layout()' or other final steps.
-            NOTE: often with custom coords, it messes up positions however
-        """
-        # plt.tight_layout()  # Optional, but might cause legend overlap.
-        pass
+    def get_button_axes(self):
+        return self.manager.buttons
+
+    def get_panel_position(self, panel_name: str) -> Tuple[float, float, float, float]:
+        if not self.manager.panel_exists(panel_name):
+            return None
+        # calls PanelData.get_position()
+        return self.manager.panels[panel_name].get_position()
+
+
+    @property
+    def fig(self):
+        """ expose the manager's figure so that external code can do plt.show() references it """
+        return self.manager.fig
+
+
