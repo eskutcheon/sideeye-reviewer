@@ -27,7 +27,7 @@ class ConstFigureDefaults:
     FIGURE_DEFAULT_SIZE: Tuple[int, int] = (12, 7)
     MAX_IMG_PER_FIGURE: int = 4
     MAX_IMG_COLS: int = 3
-    AXES_PADDING: float = 0.02
+    AXES_PADDING: float = 0.01
     # button related constants
     BUTTON_SPACING: float = 0.01
     BUTTON_WIDTH: float = 0.1
@@ -49,7 +49,7 @@ class ConstFigureDefaults:
     BOTTOM_RIGHT_PANEL_ALPHA: float = 0.25 # transparency of the axes background
     # button panel related constants
         # intended to be fixed and ever-present, but might treat it the same as the main panel (full width from adjacent unused panels) later
-    BOTTOM_PANEL_LEFT: float = 0.15 #field(init=False) # depends on on bottom left panel right bound
+    BOTTOM_PANEL_LEFT: float = 0.125 #field(init=False) # depends on on bottom left panel right bound
     BOTTOM_PANEL_BOTTOM: float = 0.0
     BOTTOM_PANEL_WIDTH: float = field(init=False) # depends on bottom left and bottom right widths
     BOTTOM_PANEL_HEIGHT: float = field(init=False) # depends on bottom left and right panel heights
@@ -58,7 +58,7 @@ class ConstFigureDefaults:
     # right panel related constants
     RIGHT_PANEL_LEFT: float = field(init=False)
     RIGHT_PANEL_BOTTOM: float = field(init=False)
-    RIGHT_PANEL_WIDTH: float = 0.15 #field(init=False)
+    RIGHT_PANEL_WIDTH: float = 0.125 #field(init=False)
     #? NOTE: might make this based on the main panel, but I'd have to figure out the space reserved for titles
     RIGHT_PANEL_HEIGHT: float = field(init=False)
     RIGHT_PANEL_FACECOLOR: str = "red"
@@ -80,24 +80,39 @@ class ConstFigureDefaults:
 
     def __post_init__(self):
         """ using the post init to set constants derived from others """
-        # bottom left panel resides in the bottom corner, meant for the legend - primarily added with the bottom right to handle subfigure widths and heights
-        #object.__setattr__(self, 'BOTTOM_LEFT_PANEL_HEIGHT', self.BOTTOM_PANEL_HEIGHT) # set to button panel height
-        # right-aligned button panel
-        object.__setattr__(self, 'BOTTOM_PANEL_WIDTH', 1.0 - self.BOTTOM_PANEL_LEFT - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
         # padding on top and bottom of the button axes
         object.__setattr__(self, 'BOTTOM_PANEL_HEIGHT', self.BUTTON_HEIGHT + 4.0*self.AXES_PADDING)
+        # bottom left panel resides in the bottom corner, meant for the legend - primarily added with the bottom right to handle subfigure widths and heights
+        object.__setattr__(self, 'BOTTOM_LEFT_PANEL_HEIGHT', self.BOTTOM_PANEL_HEIGHT) # set to button panel height
+        # right-aligned button panel
+        object.__setattr__(self, 'BOTTOM_PANEL_WIDTH', 1.0 - self.BOTTOM_PANEL_LEFT - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
+        # bottom right panel resides in the bottom corner, meant for either the exit button or radial buttons in the future; also added to handle subfigure consistency
+        object.__setattr__(self, 'BOTTOM_RIGHT_PANEL_LEFT', self.BOTTOM_PANEL_LEFT + self.BOTTOM_PANEL_WIDTH) # set to button panel right bound
+        object.__setattr__(self, 'BOTTOM_RIGHT_PANEL_WIDTH', self.RIGHT_PANEL_WIDTH) # set to right panel width
+        object.__setattr__(self, 'BOTTOM_RIGHT_PANEL_HEIGHT', self.BOTTOM_PANEL_HEIGHT) # set to button panel height
         # aligned against extreme edge with no padding
         # essentially defaulting to the same panel width on the right and left.
         #object.__setattr__(self, 'RIGHT_PANEL_WIDTH', self.LEFT_PANEL_WIDTH)
-        object.__setattr__(self, 'RIGHT_PANEL_LEFT', 1.0 - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
-        # right panel bottom == button panel top
-        object.__setattr__(self, 'RIGHT_PANEL_BOTTOM', self.BOTTOM_PANEL_BOTTOM + self.BOTTOM_PANEL_HEIGHT)#self.BUTTON_HEIGHT + 2.0*self.AXES_PADDING)
-        object.__setattr__(self, 'RIGHT_PANEL_HEIGHT', 1.0 - self.RIGHT_PANEL_BOTTOM)
-        # main panel is the remaining space after determining bounds
+        # object.__setattr__(self, 'RIGHT_PANEL_LEFT', 1.0 - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
+        # # right panel bottom == button panel top
+        # object.__setattr__(self, 'RIGHT_PANEL_BOTTOM', self.BOTTOM_PANEL_BOTTOM + self.BOTTOM_PANEL_HEIGHT)#self.BUTTON_HEIGHT + 2.0*self.AXES_PADDING)
+        # object.__setattr__(self, 'RIGHT_PANEL_HEIGHT', 1.0 - self.RIGHT_PANEL_BOTTOM)
+        # # main panel is the remaining space after determining bounds
+        # object.__setattr__(self, 'MAIN_PANEL_LEFT', self.LEFT_PANEL_LEFT + self.LEFT_PANEL_WIDTH)
+        # object.__setattr__(self, 'MAIN_PANEL_BOTTOM', self.BOTTOM_PANEL_BOTTOM + self.BOTTOM_PANEL_HEIGHT)
+        # object.__setattr__(self, 'MAIN_PANEL_WIDTH', self.RIGHT_PANEL_LEFT - self.MAIN_PANEL_LEFT)
+        # object.__setattr__(self, 'MAIN_PANEL_HEIGHT', 1.0 - self.MAIN_PANEL_BOTTOM)
+        ### main panel is the remaining space after determining bounds
         object.__setattr__(self, 'MAIN_PANEL_LEFT', self.LEFT_PANEL_LEFT + self.LEFT_PANEL_WIDTH)
         object.__setattr__(self, 'MAIN_PANEL_BOTTOM', self.BOTTOM_PANEL_BOTTOM + self.BOTTOM_PANEL_HEIGHT)
-        object.__setattr__(self, 'MAIN_PANEL_WIDTH', self.RIGHT_PANEL_LEFT - self.MAIN_PANEL_LEFT)
-        object.__setattr__(self, 'MAIN_PANEL_HEIGHT', 1.0 - self.MAIN_PANEL_BOTTOM)
+        object.__setattr__(self, 'MAIN_PANEL_WIDTH', self.BOTTOM_PANEL_WIDTH) #self.RIGHT_PANEL_LEFT - self.MAIN_PANEL_LEFT)
+        object.__setattr__(self, 'MAIN_PANEL_HEIGHT', 1.0 - self.BOTTOM_PANEL_HEIGHT) #1.0 - self.MAIN_PANEL_BOTTOM)
+        # right panel bottom == button panel top
+        object.__setattr__(self, 'RIGHT_PANEL_LEFT', self.MAIN_PANEL_LEFT + self.MAIN_PANEL_WIDTH) #1.0 - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
+        object.__setattr__(self, 'RIGHT_PANEL_BOTTOM', self.MAIN_PANEL_BOTTOM)# self.BOTTOM_PANEL_BOTTOM + self.BOTTOM_PANEL_HEIGHT)#self.BUTTON_HEIGHT + 2.0*self.AXES_PADDING)
+        object.__setattr__(self, 'RIGHT_PANEL_HEIGHT', self.MAIN_PANEL_HEIGHT) #1.0 - self.RIGHT_PANEL_BOTTOM)
+
+
 
     #? NOTE: these work exactly the same as if they were static methods but this way is supposedly safer when using init=False
     @classmethod

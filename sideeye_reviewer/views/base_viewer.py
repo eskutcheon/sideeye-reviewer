@@ -31,6 +31,10 @@ class BaseReviewerView:
         self.controller: ControllerLike = None  # set when we initialize the UI with setup_gui() called from the controller
         self.use_summary = False
         self.buttons_assigned = None # set after creation of the layout manager to index button positions
+        #? NOTE: needed to avoid repeatedly overlaying text on the same position in the figure after the timer is added
+        #self.subtitle_pos = (0.5, 0.95)  # default position for the subtitle text in the figure
+        self.subtitle: plt.Text = None  # used to store the subtitle text object for updating
+        self.warning_text: plt.Text = None  # used to store the warning text object for updating without continually creating new text objects
         # Buttons stored here
         self.stop_button = None
         self.undo_button = None
@@ -81,24 +85,24 @@ class BaseReviewerView:
         self.layout.create_figure_layout()
         self.buttons_assigned = [False] * len(self.layout.get_button_axes())
 
-
+    # TODO: need to rethink parts of all button creation methods - including subclasses - subfigure layout changes things a bit
     def _create_base_buttons(self):
         """ Creates STOP and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
-        #! FIXME: buttons no longer located in PaneledFigureWrapper.created_axes - call new method for PaneledFigureWrapper.buttons
-            #! also, buttons are now returned as the actual axes objects - fix this too
         btn_axes: List[plt.Axes] = self.layout.get_button_axes()
-        undo_ax = btn_axes[1]
-        stop_ax = btn_axes[0]
+        # TODO: I foresee it being a problem trying to pass self.fig to the factory method - I might want to add a "parent" attribute to AxesData for the subfigs
+        undo_ax = btn_axes[-2].axes
+        stop_ax = btn_axes[-3].axes
         self.buttons_assigned[:1] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
         # Positions: [left, bottom, width, height]
+        subfig = self.layout.get_subfigure("bottom")
         self.undo_button = ReviewerButton.factory(
-            fig = self.fig,
+            fig = subfig,
             label = "UNDO",
             ax_pos = undo_ax.get_position().bounds,
             callback = self.controller.on_undo_clicked
         )
         self.stop_button = ReviewerButton.factory(
-            fig = self.fig,
+            fig = subfig,
             # TODO: might want to change all instances of "STOP" buttons to "EXIT" for consistency with the viewer
             label = "STOP",
             ax_pos = stop_ax.get_position().bounds,
@@ -134,9 +138,8 @@ class BaseReviewerView:
     def display_image(self, image, ax_idx=0):
         """ show or update an image on self.axs; adjust accordingly for multiple axes """
         # if it's the first call, store the imshow result; otherwise update set_data().
-        #! FIXME: images no longer located in PaneledFigureWrapper.created_axes - call new method for PaneledFigureWrapper.image_axes
-            #! also, buttons are now returned as the actual axes objects - fix this too
-        ax = self.layout.get_image_subaxes(ax_idx)
+        ### ax = self.layout.get_image_subaxes(ax_idx)
+        ax = self.layout.get_image_subaxes(ax_idx).axes
         if len(self.canvas_images) > ax_idx:
             self.canvas_images[ax_idx].set_data(image)
         else:
@@ -148,15 +151,23 @@ class BaseReviewerView:
         self.fig.canvas.draw_idle()  # Update without forcing new figures
 
     def update_title(self, text, subtitle = None):
-        # TODO: update to split text into a primary title and subtitles
+        if self.warning_text is not None:
+            self.warning_text.set_visible(False)
         if self.fig:
             self.fig.suptitle(text, fontsize=24, fontweight="bold", wrap=True)
             if subtitle:
-                try:
-                    self.fig.texts[1].remove()  # remove the previous subtitle if it exists
-                except IndexError:
-                    pass
-                self.fig.text(0.5, 0.95, subtitle, ha='center', va='top', fontsize=18)
+                self.update_subtitle(subtitle)  # update the subtitle if provided
+            self.fig.canvas.draw()
+
+    def update_subtitle(self, text):
+        """ updates the subtitle text in the figure """
+        if self.fig:
+            if self.subtitle is not None:
+                # remove the previous subtitle if it exists
+                self.subtitle.set_text(text)
+            else:
+                # create a new subtitle text object if it doesn't exist
+                self.subtitle = plt.figtext(0.5, 0.95, text, ha='center', va='top', fontsize=18)
 
     #~ UPDATE: new summary axis with random extra stuff queued by the data manager
     def update_summary(self, text):
@@ -170,21 +181,25 @@ class BaseReviewerView:
                 #self.fig.canvas.draw()
                 self.fig.canvas.draw_idle()  # Update without forcing new figures
 
-    def display_warning(self, message="Warning!", duration=3000):
+    def display_warning(self, message="Warning!", duration=2500):
         """ replicates the old 'display_warning()' from base_reviewer.py with purely UI functionality """
-        txt = self.fig.text(0.5, 0.3, message, ha='center', va='center', fontsize=18, color='red', backgroundcolor='#263037')
-        #self.fig.canvas.draw()
-        self.fig.canvas.draw_idle()  # Update without forcing new figures
+        if self.warning_text is None:
+            self.warning_text = self.fig.text(0.5, 0.3, message, ha='center', va='center', fontsize=18, color='red', backgroundcolor='#263037')
+        else:
+            self.warning_text.set_text(message)
+            self.warning_text.set_visible(True)  # make sure the text is visible
+        self.fig.canvas.draw()
         def remove_text():
             try:
-                txt.set_visible(False)
+                self.warning_text.set_visible(False)
+                #self.warning_text.remove()  # remove the text object from the figure
                 #self.fig.canvas.draw()
                 self.fig.canvas.draw_idle()  # Update without forcing new figures
             except ValueError:
                 pass
         # create a timer that will remove the text after `duration` milliseconds
         timer = self.fig.canvas.new_timer(interval=duration)
-        timer.add_callback(remove_text)
+        timer.add_callback([remove_text])
         timer.start()
 
     def main_loop(self):
@@ -193,8 +208,6 @@ class BaseReviewerView:
         """
         try:
             while not self._stop_requested and plt.fignum_exists(self.fig.number):
-                #self.fig.canvas.flush_events()  # Process events without blocking
-                # self.fig.canvas.draw()
                 plt.pause(0.05) # short pause to handle events
         except KeyboardInterrupt:
             # if the user interrupts the loop, we can handle it here

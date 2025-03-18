@@ -1,28 +1,9 @@
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable
 from dataclasses import dataclass, field
 import matplotlib.pyplot as plt
+import numpy as np
 # global constants for heights/widths that are unlikely to change but may be adjusted by the layout manager
 from .figure_defaults import ConstAxesDefaults
-
-
-def ensure_all_args_set(defaults: Dict[str, Union[float, str]], left: float, bottom: float, width: float, height: float, **kwargs):
-    """ helper function to ensure that all arguments are set """
-    if left is None and 'left' not in kwargs:
-        left = defaults.pop('left')
-    if bottom is None and 'bottom' not in kwargs:
-        bottom = defaults.pop('bottom')
-    if width is None and 'width' not in kwargs:
-        width = defaults.pop('width')
-    if height is None and 'height' not in kwargs:
-        height = defaults.pop('height')
-    return left, bottom, width, height
-
-def ensure_all_kwargs_set(defaults: Dict[str, Union[float, str]], kwargs):
-    """ helper function to ensure that all arguments are set """
-    for key, value in defaults.items():
-        if key not in kwargs:
-            kwargs[key] = value
-    return kwargs
 
 
 def ensure_all_args_and_kwargs_set(defaults: Dict[str, Union[float, str]], **kwargs) -> Tuple[float, float, float, float, Dict[str, Union[float, str]]]:
@@ -37,6 +18,7 @@ def ensure_all_args_and_kwargs_set(defaults: Dict[str, Union[float, str]], **kwa
         if key not in kwargs and key not in ['left', 'bottom', 'width', 'height']:
             kwargs[key] = value
     return left, bottom, width, height, kwargs
+
 
 @dataclass
 class AxesData:
@@ -53,6 +35,56 @@ class AxesData:
     title_size: Optional[Union[int, str]] = "large"
     axes: plt.Axes = None
 
+    def initialize_axes(self, ax: plt.Axes):
+        """ set the facecolor and alpha for the axes """
+        if self.color:
+            ax.set_facecolor(self.color)
+        if self.alpha < 1.0:
+            ax.set_alpha(self.alpha)
+        if self.title:
+            ax.set_title(self.title, fontsize=self.title_size)
+        self.axes = ax  # set the axes for the data
+
+    def update_position(self, left: float, bottom: float, width: float, height: float):
+        """ update the position of the axes """
+        self.left = left
+        self.bottom = bottom
+        self.width = width
+        self.height = height
+
+
+@dataclass
+class PanelData:
+    name: str
+    left: float
+    bottom: float
+    width: float
+    height: float
+    facecolor: Optional[str] = "white"  # background color of the panel
+    alpha: Optional[float] = 1.0
+    title: Optional[str] = None
+    title_size: Optional[Union[int, str]] = "large"
+    # the primary object that this class is meant to wrap - "panels" are subfigures of the main figure, created by the layout manager
+    subfigure: Optional[plt.Figure] = None
+    # grid_idx: Optional[Tuple[int, int]] = None
+    # fig_idx: Optional[int] = None  # index of the subfigure in the main figure's subfigures array
+    # list of AxesData to place in second phase of the layout creation
+    axes_items: List[AxesData] = field(default_factory=list)
+
+    # TODO: determine whether I want to drop this - currently unused in favor of PaneledFigureLayout.add_axes_data_to_panel
+    def add_axes_item(self, ax_data: AxesData):
+        self.axes_items.append(ax_data)
+
+    def get_position(self) -> Tuple[float, float, float, float]:
+        return self.left, self.bottom, self.width, self.height
+
+    def initialize_subfigure(self, subfig: plt.Figure):
+        subfig.set_facecolor(self.facecolor)  # set the facecolor for the subfigure
+        if self.alpha < 1.0:
+            subfig.patch.set_alpha(self.alpha)
+        if self.title:
+            subfig.suptitle(self.title, fontsize=self.title_size)
+        self.subfigure = subfig  # set the subfigure for the panel
 
 
 #@dataclass
@@ -60,9 +92,6 @@ class CheckboxAxesData(AxesData):
     """ for storing checkboxes axes info """
     DEFAULT_KWARGS = ConstAxesDefaults.get_checkbox_defaults()
     def __init__(self, left=None, bottom=None, width=None, height=None, **kwargs):
-        # args = ensure_all_args_set(self.DEFAULT_KWARGS, left, bottom, width, height, **kwargs)
-        # kwargs = ensure_all_kwargs_set(self.DEFAULT_KWARGS, kwargs)
-        # super().__init__("checkboxes", *args, **kwargs)
         left, bottom, width, height, kwargs = ensure_all_args_and_kwargs_set(
             self.DEFAULT_KWARGS,
             left=left,
@@ -80,9 +109,6 @@ class SummaryAxesData(AxesData):
     """ for storing summary box axes info """
     DEFAULT_KWARGS = ConstAxesDefaults.get_summary_defaults()
     def __init__(self, left=None, bottom=None, width=None, height=None, **kwargs):
-        # args = ensure_all_args_set(self.DEFAULT_KWARGS, left, bottom, width, height, **kwargs)
-        # kwargs = ensure_all_kwargs_set(self.DEFAULT_KWARGS, kwargs)
-        # super().__init__("summary", *args, **kwargs)
         left, bottom, width, height, kwargs = ensure_all_args_and_kwargs_set(
             self.DEFAULT_KWARGS,
             left=left, bottom=bottom,
@@ -97,9 +123,6 @@ class LegendAxesData(AxesData):
     """ for storing legend axes info """
     DEFAULT_KWARGS = ConstAxesDefaults.get_legend_defaults()
     def __init__(self, left=None, bottom=None, width=None, height=None, **kwargs):
-        # args = ensure_all_args_set(self.DEFAULT_KWARGS, left, bottom, width, height, **kwargs)
-        # kwargs = ensure_all_kwargs_set(self.DEFAULT_KWARGS, kwargs)
-        # super().__init__("legend", *args, **kwargs)
         left, bottom, width, height, kwargs = ensure_all_args_and_kwargs_set(
             self.DEFAULT_KWARGS,
             left=left,
@@ -116,11 +139,6 @@ class ButtonAxesData(AxesData):
     """ for storing button axes info """
     DEFAULT_KWARGS = ConstAxesDefaults.get_button_defaults()
     def __init__(self, left=None, bottom=None, width=None, height=None, **kwargs):
-        # if (left is None and "left" not in kwargs) or (bottom is None and "bottom" not in kwargs):
-        #     raise ValueError("ButtonAxesData must at the least be instantiated with 'left' and 'bottom'.")
-        # args = ensure_all_args_set(self.DEFAULT_KWARGS, left, bottom, width, height, **kwargs)
-        # kwargs = ensure_all_kwargs_set(self.DEFAULT_KWARGS, kwargs)
-        # super().__init__("buttons", *args, **kwargs)
         if left is None or bottom is None:
             # UPDATE: think I shouldn't have to check the kwargs here since they wouldn't be in kwargs without a duplicate argument error
             raise ValueError("ButtonAxesData must at the least be instantiated with 'left' and 'bottom'.")
@@ -136,7 +154,7 @@ class ButtonAxesData(AxesData):
         super().__init__("buttons", left, bottom, width, height, **kwargs)
 
 
-# TODO: create ImageAxesData class for storing image axes info - handling default subplot adjustment for now
+#** may not use this anyway since the new panel layout creator is using subplots
 class ImageAxesData(AxesData):
     """ for storing image axes info """
     # TODO: add non-positional default arguments for things like color, alpha, title, etc
@@ -146,5 +164,6 @@ class ImageAxesData(AxesData):
         pos = ax.get_position().bounds
         kwargs.update({"left": pos[0], "bottom": pos[1], "width": pos[2], "height": pos[3]})
         print(f"ImageAxesData kwargs: {kwargs}")
-        super().__init__("image", axes = ax, **kwargs)
+        super().__init__("image", **kwargs)
+        self.initialize_axes(ax)  # set the facecolor and alpha for the axes
 

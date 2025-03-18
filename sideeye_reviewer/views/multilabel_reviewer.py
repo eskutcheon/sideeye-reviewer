@@ -40,7 +40,16 @@ class MultiLabelReviewerView(BaseReviewerView):
         """ Create the checkboxes for multi-label usage """
         num_labels = len(labels)
         # # REMINDER: order is [left, bottom, width, height]
-        ax_checkboxes = self.layout.get_axes("right", "checkboxes")
+        # TODO: just like the buttons, ensure later that either just axes are returned by get_axes or access them from here
+        # ax_checkboxes = self.layout.get_axes("right", "checkboxes")
+        ax_checkboxes = self.layout.get_axes("right", "checkboxes")[0]
+        print("ax_checkboxes: ", ax_checkboxes)
+        #[0]
+        #self.layout.autofit_axes_to_panel("right", ax_checkboxes)
+        ax_checkboxes = ax_checkboxes.axes
+        #!!! TEMP: DO NOT let this access approach remain later:
+        # self.layout.manager.rescale_axes_in_panel("right", ax_checkboxes)
+        # ax_checkboxes = ax_checkboxes.axes
         print("ax_checkboxes position: ", ax_checkboxes.get_position().bounds)
         # Define properties for labels and checkboxes
         label_props = {'color': ['black'] * num_labels, 'fontsize': ['x-large'] * num_labels}
@@ -48,6 +57,7 @@ class MultiLabelReviewerView(BaseReviewerView):
         frame_props = {'edgecolor': 'black', 'sizes': [200] * num_labels, 'facecolor': 'white'}
         self.checkboxes = CheckButtons(ax=ax_checkboxes, labels=labels, label_props=label_props, check_props=check_props, frame_props=frame_props)
         self.checkboxes.ax.set_title("Select all that apply.", fontsize="x-large")
+        print("checkbox dimensions after creation: ", self.checkboxes.ax.get_position().bounds)
 
 
     def add_next_button(self):
@@ -55,11 +65,16 @@ class MultiLabelReviewerView(BaseReviewerView):
         # positions = get_button_axes(num_buttons=1, left_bound=left_bound, right_bound=right_bound)[0]
         #positions = self.layout.get_axes("buttons")[-1].get_position().bounds
         # get leftmost button to assign "NEXT" label
-        position = self.layout.get_button_axes()[-1].get_position().bounds
+        # TODO: same note as other button functions: update the way axes are retrieved
+        # position = self.layout.get_button_axes()[-1].get_position().bounds
+        print(self.layout.get_button_axes())
+        position = self.layout.get_button_axes()[-1].axes.get_position().bounds
+        subfig = self.layout.get_subfigure("bottom")
         #print(f"position: {position}")
         # FIXME: need to fix the position back into something relevant to the enclosing panel
         self.next_button = ReviewerButton.factory(
-            fig=self.layout.get_subfigure("bottom"),
+            #fig=self.fig, #self.layout.get_subfigure("bottom"),
+            fig=subfig,
             label="NEXT",
             ax_pos=position,
             callback=self.controller.on_next_clicked

@@ -39,12 +39,15 @@ class SingleLabelReviewerView(BaseReviewerView):
         #! FIXME: buttons no longer located in PaneledFigureWrapper.created_axes - call new method for PaneledFigureWrapper.buttons
             #! also, buttons are now returned as the actual axes objects - fix this too
         #button_axes: List[plt.Axes] = self.layout.get_axes("buttons")[::-1]
-        button_axes: List[plt.Axes] = self.layout.get_button_axes()
+        #button_axes: List[plt.Axes] = self.layout.get_button_axes()
+        button_axes: List[plt.Axes] = [ax_data.axes for ax_data in self.layout.get_button_axes()][::-1]
         num_btn = len(button_axes)
         open_positions = [pos.get_position().bounds for i, pos in enumerate(button_axes) if self.buttons_assigned[num_btn - i] is False]
         for lbl, pos in zip(labels, open_positions):
             btn = ReviewerButton.factory(
-                fig=self.fig,
+                #fig=self.fig,
+                #! TEMP
+                fig=self.layout.get_subfigure("bottom"),
                 label=lbl.upper(),
                 ax_pos=pos, #.get_position().bounds,
                 callback = self.controller.get_on_label_clicked_cb(lbl)
