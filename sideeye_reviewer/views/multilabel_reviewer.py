@@ -5,8 +5,6 @@ from matplotlib.widgets import CheckButtons
 from ..types import ControllerLike
 from .base_viewer import BaseReviewerView
 from .reviewer_button import ReviewerButton
-from ..utils.utils import get_button_axes
-
 
 
 class MultiLabelReviewerView(BaseReviewerView):
@@ -40,16 +38,10 @@ class MultiLabelReviewerView(BaseReviewerView):
         """ Create the checkboxes for multi-label usage """
         num_labels = len(labels)
         # # REMINDER: order is [left, bottom, width, height]
-        # TODO: just like the buttons, ensure later that either just axes are returned by get_axes or access them from here
-        # ax_checkboxes = self.layout.get_axes("right", "checkboxes")
-        ax_checkboxes = self.layout.get_axes("right", "checkboxes")[0]
+        # TODO: might refactor to retrieve AxesData object instead of the axes directly - reference bounds this way
+        ax_checkboxes: plt.Axes = self.layout.get_axes("right", "checkboxes") #[0]
         print("ax_checkboxes: ", ax_checkboxes)
-        #[0]
-        #self.layout.autofit_axes_to_panel("right", ax_checkboxes)
-        ax_checkboxes = ax_checkboxes.axes
-        #!!! TEMP: DO NOT let this access approach remain later:
-        # self.layout.manager.rescale_axes_in_panel("right", ax_checkboxes)
-        # ax_checkboxes = ax_checkboxes.axes
+        #ax_checkboxes = ax_checkboxes.axes
         print("ax_checkboxes position: ", ax_checkboxes.get_position().bounds)
         # Define properties for labels and checkboxes
         label_props = {'color': ['black'] * num_labels, 'fontsize': ['x-large'] * num_labels}
@@ -62,32 +54,25 @@ class MultiLabelReviewerView(BaseReviewerView):
 
     def add_next_button(self):
         # # NOTE: selecting first element since there's only one in this case and that's how the factory expects it
-        # positions = get_button_axes(num_buttons=1, left_bound=left_bound, right_bound=right_bound)[0]
-        #positions = self.layout.get_axes("buttons")[-1].get_position().bounds
-        # get leftmost button to assign "NEXT" label
-        # TODO: same note as other button functions: update the way axes are retrieved
-        # position = self.layout.get_button_axes()[-1].get_position().bounds
+        # get leftmost button to assign "NEXT" label (since get_button_axes() returns them in reverse order)
         print(self.layout.get_button_axes())
         position = self.layout.get_button_axes()[-1].axes.get_position().bounds
         subfig = self.layout.get_subfigure("bottom")
-        #print(f"position: {position}")
         # FIXME: need to fix the position back into something relevant to the enclosing panel
         self.next_button = ReviewerButton.factory(
-            #fig=self.fig, #self.layout.get_subfigure("bottom"),
             fig=subfig,
             label="NEXT",
             ax_pos=position,
             callback=self.controller.on_next_clicked
         )
 
-    def get_checked_labels(self, clear_after=False):
+    def get_checked_labels(self, clear_after=True):
         """ controller calls this to retrieve which boxes are checked """
-        # return self.checkboxes.get_checked_labels() or a custom method
         # NOTE: CheckButtons object in matplotlib 3.7+ has get_status() to use, but older versions may not
         status = self.checkboxes.get_status()  # list of bools
         labels = self.checkboxes.labels
         chosen = [label.get_text() for label, s in zip(labels, status) if s]
-        # optionally uncheck the boxes in the view
+        # optionally uncheck the boxes in the view - tbh, not sure why I wouldn't but this was recommended
         if clear_after:
             self.checkboxes.clear()
         return chosen

@@ -1,5 +1,4 @@
 from typing import Optional, Dict, List
-from numpy import ndarray
 import matplotlib.pyplot as plt
 # local imports
 from .reviewer_button import ReviewerButton
@@ -25,11 +24,11 @@ class BaseReviewerView:
         self.fig_title = fig_title
         self.fig = None
         self.layout = None  # FigureLayoutManager instance
-        ###self.axs = []
         self.canvas_images = []
         self._stop_requested = False
         self.controller: ControllerLike = None  # set when we initialize the UI with setup_gui() called from the controller
-        self.use_summary = False
+        #! TEMP: setting to true unconditionally until it's integrated into the controller
+        self.use_summary = True
         self.buttons_assigned = None # set after creation of the layout manager to index button positions
         #? NOTE: needed to avoid repeatedly overlaying text on the same position in the figure after the timer is added
         #self.subtitle_pos = (0.5, 0.95)  # default position for the subtitle text in the figure
@@ -45,7 +44,8 @@ class BaseReviewerView:
         num_axes: int = 1,
         num_buttons: int = 2,
         use_legend: bool = True,
-        use_summary: bool = False,
+        #! TEMP: setting to true unconditionally until it's integrated into the controller
+        use_summary: bool = True,
         use_checkboxes: bool = False
     ):
         """ Create the figure, buttons, etc. Wire them to the controller's callback methods """
@@ -63,7 +63,6 @@ class BaseReviewerView:
             use_checkboxes = use_checkboxes
         )
         self.fig = self.layout.fig
-        ###self.axs = self.layout.axes
         plt.ion()
         self.update_title(self.fig_title)
         maximize_window() # might need to come before plt.show
@@ -85,13 +84,15 @@ class BaseReviewerView:
         self.layout.create_figure_layout()
         self.buttons_assigned = [False] * len(self.layout.get_button_axes())
 
-    # TODO: need to rethink parts of all button creation methods - including subclasses - subfigure layout changes things a bit
+    # TODO: feel like this should be added to the layout manager instead of here - could just pass the controller callbacks in a list
+        # It does call into question the use of a new AxesManager like I wrote about here and there
     def _create_base_buttons(self):
         """ Creates STOP and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
-        btn_axes: List[plt.Axes] = self.layout.get_button_axes()
+        #? NOTE: these are returned in reverse order so that the rightmost button is at index 0
+        btn_axes: List['AxesData'] = self.layout.get_button_axes()
         # TODO: I foresee it being a problem trying to pass self.fig to the factory method - I might want to add a "parent" attribute to AxesData for the subfigs
-        undo_ax = btn_axes[-2].axes
-        stop_ax = btn_axes[-3].axes
+        undo_ax = btn_axes[1].axes
+        stop_ax = btn_axes[0].axes
         self.buttons_assigned[:1] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
         # Positions: [left, bottom, width, height]
         subfig = self.layout.get_subfigure("bottom")
@@ -118,13 +119,13 @@ class BaseReviewerView:
     def _create_label_buttons(self, labels):
         raise NotImplementedError("Subclasses must implement this method to create label buttons")
 
-    # def _create_legend(self):
-    #     raise NotImplementedError("Subclasses must implement this method to create a legend")
+
     def _create_legend(self, legend_dict: Dict[str, str] = None):
         # bottom left corner to place the legend
         if legend_dict:
             legend_kwargs = {
-                "loc": "lower left",
+                "loc": "center", #"lower left",
+                "bbox_to_anchor": self.layout.get_panel_position("bottom_left"),
                 "fontsize": "x-large",
             }
             position = self.layout.get_panel_position("left")
@@ -173,12 +174,12 @@ class BaseReviewerView:
     def update_summary(self, text):
         """ updates the summary box with new text """
         if self.use_summary:
-            summary_ax = self.layout.get_axes("summary")
+            # FIXME: may not be using this long term - should work for now
+            summary_ax = self.layout.get_axes("left", "summary")
             if summary_ax:
                 summary_ax.clear()
                 summary_ax.text(0.5, 0.5, text, ha="center", va="center", fontsize="large")
                 summary_ax.axis("off")
-                #self.fig.canvas.draw()
                 self.fig.canvas.draw_idle()  # Update without forcing new figures
 
     def display_warning(self, message="Warning!", duration=2500):

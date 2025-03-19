@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable, Any
 # local imports
 from .utils import disable_all_axis_elements, measure_checkbox_labels, compute_button_positions
-from .axes_data import AxesData, ButtonAxesData, CheckboxAxesData, SummaryAxesData, LegendAxesData, ImageAxesData, PanelData
+from .axes_wrappers import AxesData, ButtonAxesData, CheckboxAxesData, SummaryAxesData, LegendAxesData, ImageAxesData, PanelData
 from .figure_wrapper import PaneledFigureWrapper
-from .figure_defaults import ConstFigureDefaults
+from .figure_defaults import ConstFigureDefaults, SUPPORTED_PANEL_NAMES
 
 
 class FigureLayoutManager:
@@ -47,24 +47,18 @@ class FigureLayoutManager:
             "left": use_summary,
             "right": use_checkboxes,
             "bottom": num_buttons > 0,  # always true if there are buttons
-            "bottom_left": False,  # not implemented yet
+            "bottom_left": use_legend,  # not implemented yet
             "bottom_right": False,  # not implemented yet
             "main": True,  # always true for the main image panel
         }
         self.panel_defaults = ConstFigureDefaults()
-        self.manager = PaneledFigureWrapper(fig_size = self.FIGURE_DIMS)
-        ###^ may not keep this
-        # self.checkbox_dims = None
-        # if labels and use_checkboxes:
-        #     self.checkbox_dims = measure_checkbox_labels(labels)
-        #     #self.checkbox_dims = approximate_checkbox_size(labels)
-        ###^
+        self.figure_wrapper = PaneledFigureWrapper(fig_size = self.FIGURE_DIMS)
 
 
     def create_figure_layout(self):
         """ define default panels and build them as subfigures """
         # following setter methods must be called before creating the figure and subfigures
-        # any panels not present in the final figure should be set to "None" in self.manager.panels
+        # any panels not present in the final figure should be set to "None" in self.figure_wrapper.panels
         self._set_bottom_panel()
         self._set_optional_panel("left", self._create_summary_axes)  # for summary box
         self._set_optional_panel("right", self._create_checkboxes)  # for checkboxes
@@ -72,14 +66,11 @@ class FigureLayoutManager:
         self._set_optional_panel("bottom_right")  # for future use
         self._set_main_panel()
         # phase 1: create the figure and subfigures from general panel bounding boxes
-        #self.manager.create_image_axes(self.num_images, num_img_rows, num_img_cols)
-        self.manager.create_paneled_figure()
+        self.figure_wrapper.create_paneled_figure()
         # phase 2: place AxesData inside each panel's subfigure and create the actual Axes objects in subfigures
-        num_img_rows, num_img_cols = self._compute_image_grid_shape()
-        #? NOTE: still creates an AxesData object for each image, but it's done in the PaneledFigureWrapper
-        self.manager.create_image_axes(self.num_images, num_img_rows, num_img_cols)  # create the image axes in the main subfigure
+        self._create_image_axes()  # create the image axes in the main subfigure
         # create actual plt.Axes objects from the AxesData objects in each of the manager's panels
-        self.manager.place_figure_elements()
+        self._place_figure_elements()
 
     ############* functions for setting the panel properties and creating the subfigures ############
 
@@ -92,52 +83,84 @@ class FigureLayoutManager:
         bottom_panel_defaults = self.panel_defaults.get_panel_defaults("bottom")
         print("bottom panel defaults:", bottom_panel_defaults)
         bottom_panel = PanelData(name="bottom", **bottom_panel_defaults)
-        self.manager.add_panel("bottom", bottom_panel)
+        self.figure_wrapper.add_panel("bottom", bottom_panel)
         buttons = self._create_button_axes(bottom_panel.left, bottom_panel.left + bottom_panel.width)
         for btn in buttons:
-            self.manager.add_axes_data_to_panel("bottom", btn)
+            self.figure_wrapper.add_axes_data_to_panel("bottom", btn)
 
     def _set_main_panel(self):
         """ set main panel for images in the center """
         #~ ... code for dynamically determining the panel's size and position goes here (based on elements in self.using_figure_elements)
         main_panel_kwargs = self.panel_defaults.get_panel_defaults("main")
-        # print("main panel defaults:", main_panel_kwargs)
-        # if not self.using_figure_elements["checkboxes"]:
-        #     right_panel_defaults = self.panel_defaults.get_panel_defaults("right")
-        #     # main_panel_kwargs["right"] = right_panel_defaults["right"]
-        #     main_panel_kwargs["width"] += right_panel_defaults["width"]
-        #     # may need to adjust the bottom but for now they should be the same
-        # if not self.using_figure_elements["summary"]:
-        #     left_panel_defaults = self.panel_defaults.get_panel_defaults("left")
-        #     main_panel_kwargs["left"] = left_panel_defaults["left"]
-        #     main_panel_kwargs["width"] += left_panel_defaults["width"]
-            # shouldn't mess with the bottom panel position since it defaults to the bottom of the figure
-        # main_panel = PanelData(name="main", grid_idx=panel_idx, **main_panel_kwargs)
         main_panel = PanelData(name="main", **main_panel_kwargs)
-        self.manager.add_panel("main", main_panel)
-        #? NOTE: can't initialize axes by calling self.manager.create_image_axes() here since it needs to be called after the subfigures are created
+        self.figure_wrapper.add_panel("main", main_panel)
+        #? NOTE: can't initialize axes by calling self.figure_wrapper.create_image_axes() here since it needs to be called after the subfigures are created
 
 
     def _set_optional_panel(self, name: str, add_axes_func: Callable = None) -> None: #, defaults: Dict[str, Any]) -> None:
         """ set optional panels (from "left", "right", "bottom_left", or "bottom_right"] """
-        if name not in self.manager.supported_panels:
-            raise ValueError(f"Panel '{name}' is not a supported panel option.")
+        if name not in SUPPORTED_PANEL_NAMES:
+            raise ValueError(f"Panel '{name}' is not a currently supported panel option.")
         if not self.panels_in_use[name]:
-            self.manager.add_panel(name, None)  # set to None if not in use
+            self.figure_wrapper.add_panel(name, None)  # set to None if not in use
         else:
             # set the panel's position and size based on the defaults and the current figure size
             panel_defaults = self.panel_defaults.get_panel_defaults(name)
             panel_data = PanelData(name=name, **panel_defaults)
-            self.manager.add_panel(name, panel_data)
+            self.figure_wrapper.add_panel(name, panel_data)
             if add_axes_func:
                 # create the axes for the panel if a function is provided
                 axes_data = add_axes_func()
-                self.manager.add_axes_data_to_panel(name, axes_data)  # append an AxesData object to the panel
-            #& PREVIOUSLY: used self.manager.add_axes_data_to_panel - now address this in a separate method
-            #& in particular, left: self._create_summary_axes() and right: self._create_checkboxes()
-            #& later, we should allow a dynamic resizing callback to tweak the panel dims based on needed axes sizes
+                #& usage of add_axes_data_to_panel would remain the same if I moved a lot of this to the axes manager
+                self.figure_wrapper.add_axes_data_to_panel(name, axes_data)  # append an AxesData object to the panel
+
+
+    # TODO: revisit the inputs and outputs of the following function later
+
+    def _place_figure_elements(self):
+        """ Phase 2: create Axes in each subfigure from stored AxesData. and handle 'button_axes' in a list """
+        def __create_axes(ax_data_list: List[AxesData], panel_name: str) -> None:
+            """ iterate over the AxesData objects in the panel and create the plt.Axes in the subfigure by their positions"""
+            for ax_data in ax_data_list:
+                if ax_data.axes is None:
+                    # normalization since the axes would be working off of the relative subfigure dims
+                    if panel_name == "right":
+                        # ensure the height is roughly half of what it would be with the entire right panel height
+                        ax_data.height *= 0.5  # TODO: make this a constant somewhere
+                    #& might move this call to the axes manager
+                    self.figure_wrapper.create_single_axes(panel_name, ax_data)
+        # function body - just didn't like how deeply nested it was
+        for pname, panel in self.figure_wrapper.panels.items():
+            if panel is None or panel.subfigure is None:
+                continue
+            # place each AxesData object
+            if pname == "main":
+                # TODO: might change this so that this function accepts arguments to call panel_wraper.create_image_axes
+                continue  # skip the main panel for now, since it has its own method for instantiation called before this
+            __create_axes(panel.axes_items, pname)
+
+
 
     ############* functions for creating the axes objects within the subfigures ############
+    # NOTE: same name as a method in PanelLayoutCreator - be careful when integrating after refactoring
+    def _create_image_axes(self):
+        """ Call after main panel initialization to add image axes to subplots in the main subfigure """
+        num_img_rows, num_img_cols = self._compute_image_grid_shape()
+        if self.num_images > num_img_rows * num_img_cols:
+            raise ValueError(f"Too many images ({self.num_images}) for the given grid size ({num_img_rows}x{num_img_cols})")
+        #& might move this call to the axes manager
+        img_axes: List[plt.Axes] = self.figure_wrapper.create_image_axes(num_img_rows, num_img_cols)
+        for ax in img_axes[:self.num_images]:
+            ax.set_aspect("auto", adjustable="box")
+            axes_data = ImageAxesData(ax)
+            #~ UPDATE: moving to using the panel_wrapper class directly
+            #self.add_axes_data_to_panel("main", axes_data)
+            self.figure_wrapper.add_axes_data_to_panel("main", axes_data)
+        # hide any unused image axes
+        for ax in img_axes[self.num_images:]:
+            ax.set_visible(False)
+    
+    
     # TODO: may be greatly refactoring all of these
     def _create_legend_axes(self):
         # might leave this one to be created entirely within the PanelData object since it autofits to "loc" based on label lengths
@@ -166,7 +189,8 @@ class FigureLayoutManager:
         """ Creates checkboxes aligned above the button panel. """
         # use defaults for now and maybe implement the dynamic sizing later
         axes_data = CheckboxAxesData()
-        self.autofit_axes_to_panel("right", axes_data)
+        # TODO: remove after re-integration of the single figure wrapper
+        #self.autofit_axes_to_panel("right", axes_data)
         return axes_data
         # set checkbox bottom bound and use defaults on all other axes properties
 
@@ -177,53 +201,49 @@ class FigureLayoutManager:
             min(self.num_images, self.MAX_IMG_COLS),
         )
 
-    # TODO: add a method similar to _set_optional_panel to be called by the individual _create_axes methods to generalize creation and dynamic resizing of the panels
-    def _set_axes_data(self, name: str, axes_data: AxesData) -> None:
-        raise NotImplementedError("Not implemented yet. This should be called by the individual _create_axes methods to generalize creation and dynamic resizing of the panels.")
-
-
     ############* getter methods for accessing the created Axes and subfigures ############
+
+    # TODO: reduce the use of these wherever possible in the view classes and move more of its methods here instead
 
     def get_subfigure(self, panel_name: str) -> plt.Figure:
         """ Returns the subfigure for the given panel name. """
-        if not self.manager.panel_exists(panel_name):
-            raise ValueError(f"Panel '{panel_name}' does not exist.")
-        return self.manager.get_subfigure(panel_name)
+        panel = self.figure_wrapper.get_initialized_panel(panel_name)
+        return panel.subfigure # should still not be possible to return None here since it's tested for
 
-    def get_axes(self, panel_name: str, axes_label: str):
-        return self.manager.get_axes(panel_name, axes_label)
+    def get_axes(self, panel_name: str, axes_label: str) -> plt.Axes:
+        all_axes: List[AxesData] = self.figure_wrapper.get_panel_axes(panel_name)
+        if all_axes is None:
+            #! may not fit with how I intended it to work before - deal with later
+            raise ValueError(f"Panel '{panel_name}' is not in use.")
+        for ax_obj in all_axes:
+            if ax_obj.label == axes_label:
+                return ax_obj.axes
+        raise ValueError(f"Axes '{axes_label}' not found in panel '{panel_name}'.")
+        #return self.figure_wrapper.get_panel_axes(panel_name, axes_label)
 
     def get_image_axes(self):
-        return self.manager.images
+        return self.figure_wrapper.images
 
-    def get_image_subaxes(self, idx):
+    def get_image_subaxes(self, idx) -> ImageAxesData:
         try:
-            return self.manager.images[idx]
+            return self.figure_wrapper.images[idx]
         except IndexError:
             raise IndexError(f"Image index {idx} out of range in the layout's list of image axes.")
 
     def get_button_axes(self):
-        return self.manager.buttons
+        return self.figure_wrapper.buttons
 
     def get_panel_position(self, panel_name: str) -> Tuple[float, float, float, float]:
-        if not self.manager.panel_exists(panel_name):
+        """ Returns the position of the given panel in the main figure. """
+        panel = self.figure_wrapper.get_panel(panel_name)
+        if panel is None:
             return None
-        # calls PanelData.get_position()
-        return self.manager.panels[panel_name].get_position()
-
-    #!! TEMP: just using for debugging - not sure if it should be kept:
-    def autofit_axes_to_panel(self, panel_name: str, ax_data: AxesData):
-        """ Rescale the axes to fit within the panel's bounding box """
-        padding = self.panel_defaults.AXES_PADDING
-        left, bottom, width, height = self.get_panel_position(panel_name)
-        print(f"{panel_name} panel position: left={left}, bottom={bottom}, width={width}, height={height}")
-        ax_data.update_position(left + padding, bottom + padding, width - 2*padding, height - 2*padding)
-        #ax_data.update_position(left, bottom, width, height)
+        return panel.get_position()
 
 
     @property
     def fig(self):
         """ expose the manager's figure so that external code can do plt.show() references it """
-        return self.manager.main_figure
+        return self.figure_wrapper.fig
 
 

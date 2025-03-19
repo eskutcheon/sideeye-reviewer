@@ -34,6 +34,7 @@ class AxesData:
     title: Optional[str] = None
     title_size: Optional[Union[int, str]] = "large"
     axes: plt.Axes = None
+    parent: plt.Figure = None  # the parent (sub)figure of the axes
 
     def initialize_axes(self, ax: plt.Axes):
         """ set the facecolor and alpha for the axes """
@@ -66,14 +67,19 @@ class PanelData:
     title_size: Optional[Union[int, str]] = "large"
     # the primary object that this class is meant to wrap - "panels" are subfigures of the main figure, created by the layout manager
     subfigure: Optional[plt.Figure] = None
-    # grid_idx: Optional[Tuple[int, int]] = None
-    # fig_idx: Optional[int] = None  # index of the subfigure in the main figure's subfigures array
     # list of AxesData to place in second phase of the layout creation
     axes_items: List[AxesData] = field(default_factory=list)
 
     # TODO: determine whether I want to drop this - currently unused in favor of PaneledFigureLayout.add_axes_data_to_panel
-    def add_axes_item(self, ax_data: AxesData):
-        self.axes_items.append(ax_data)
+    def add_axes_item(self, ax_data: Union[AxesData, List[AxesData]]):
+        """ add one or more AxesData object to the panel """
+        if not isinstance(ax_data, list):
+            ax_data = [ax_data]
+        for ax in ax_data:
+            if not issubclass(type(ax), AxesData):
+                raise TypeError(f"Expected AxesData object, got {type(ax)}")
+            self.axes_items.append(ax)
+            ax.parent = self.subfigure  # set the parent (sub)figure of the axes
 
     def get_position(self) -> Tuple[float, float, float, float]:
         return self.left, self.bottom, self.width, self.height
@@ -85,6 +91,18 @@ class PanelData:
         if self.title:
             subfig.suptitle(self.title, fontsize=self.title_size)
         self.subfigure = subfig  # set the subfigure for the panel
+
+    def rescale_axes(self, ax_data: AxesData):
+        """ Rescale the axes to fit within the panel's bounding box """
+        # get the (subfigure) panel's position in the main figure
+        panel_left, panel_bottom, panel_width, panel_height = self.get_position()
+        # adjust the axes' position relative to the panel
+        ax_data.left = (ax_data.left - panel_left) / panel_width
+        ax_data.bottom = (ax_data.bottom - panel_bottom) / panel_height
+        # rescale the axes' width and height relative to the panel
+        ax_data.width /= panel_width
+        ax_data.height /= panel_height
+
 
 
 #@dataclass
