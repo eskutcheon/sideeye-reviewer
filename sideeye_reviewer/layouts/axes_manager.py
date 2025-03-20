@@ -1,51 +1,69 @@
 import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable, Any
+from numpy import ndarray as NDarray
 # local imports
 from .utils import disable_all_axis_elements, measure_checkbox_labels, compute_button_positions
 from .axes_wrappers import AxesData, ButtonAxesData, CheckboxAxesData, SummaryAxesData, LegendAxesData, ImageAxesData, PanelData
 from .figure_defaults import ConstFigureDefaults, ConstAxesDefaults, SUPPORTED_PANEL_NAMES
 
 
+# may add this to the utils later
+def get_axes_list(axes: Union[plt.Axes, List[plt.Axes], NDarray]) -> List[plt.Axes]:
+    """ helper function to ensure that the axes are returned as a list of Axes objects """
+    if not isinstance(axes, (list, NDarray)) and isinstance(axes, plt.Axes):
+        axes = [axes]
+    elif isinstance(axes, NDarray) and axes.ndim > 1:
+        axes = axes.flatten()  # ensure axes is a 1D list of Axes objects
+    # may still want to generalize this function further and assign axes to the panel's axes_items list
+    return list(axes)
+
 class AxesCreationManager:
-    """ Manages the creation and settings of axes in all of the figures subfigures
-        meant to be a class member of FigureLayoutManager which calls to it to create and adjust axes
+    """ Standalone class that creates AxesData objects for common usage scenarios:
+        - Image axes (a grid for multiple images)
+        - Button axes (a row of buttons)
+        - Single axes
+        - Subplot axes (multiple subplots)
+        It's meant to be a class member of FigureLayoutManager which calls to it to create and adjust axes
     """
     def __init__(self, used_axes_dict: Dict[str, bool]):
-        self.fig_defaults = ConstFigureDefaults()
+        #self.fig_defaults = ConstFigureDefaults()
+        # if I don't use this somewhere, there's no need to add a constructor
         self.used_axes_dict = used_axes_dict
 
 
+    def create_image_axes_data(self,
+                               panel_data: PanelData,
+                               num_images: int,
+                               nrows: int,
+                               ncols: int,
+                               **kwargs) -> List[ImageAxesData]:
+        kwargs.setdefault("aspect", "auto")     # set the aspect ratio to auto for image axes
+        kwargs.setdefault("adjustable", "box")  # set the adjustable to box for image axes
+        kwargs.setdefault("snap", True)         # set the snap to True for image axes
+        #kwargs.setdefault("layout", "tight")    # set the layout to tight for image axes
+        #kwargs.setdefault("antialiased", True) # may or may not need this for the images - decide later
+        img_axes_data: List[ImageAxesData] = []
+        subfig = self._get_initialized_subfig(panel_data)
+        img_axes: List[plt.Axes] = self._get_axes_subplots(subfig, nrows, ncols, **kwargs)
+        for ax in img_axes[:num_images]:
+            ax.set_aspect("auto", adjustable="box")
+            img_axes_data.append(ImageAxesData(ax))
+            #& move this call back to the layout manager to register the axes in the panel
+            #self.figure_wrapper.add_axes_data_to_panel("main", axes_data)
+            # could easily just use `panel_data.add_axes_data(ImageAxesData(ax))` instead
+        #subfig.set_layout_engine("tight")
+        # hide any unused image axes
+        for ax in img_axes[num_images:]:
+            ax.set_visible(False)
+        return img_axes_data
 
-    
-    
-    def create_image_axes(self, num_images: int, num_img_rows: int, num_img_cols: int, **kwargs) -> List[ImageAxesData]:
-        pass
-
-    #? NOTE: essentially the exact same logic as PaneledFigureWrapper.create_single_axes - could call this instead
-    def set_axes_object(self, panel_data: PanelData, axes_data: AxesData):
-        """ creates axes in the given panel of the figure using the provided AxesData """
-        subfig = panel_data.subfigure
-        if subfig is None:
-            raise ValueError(f"Subfigure for panel '{panel_data.name}' is not yet initialized.")
-        # create the axes in the subfigure using the provided AxesData
-        ax = subfig.add_axes([axes_data.left, axes_data.bottom, axes_data.width, axes_data.height])
-        # initialize the axes with the data from the AxesData object
-        axes_data.initialize_axes(ax)
-
-    def create_legend_axes(self, **kwargs) -> LegendAxesData:
-        """Return a legend AxesData object."""
-        return LegendAxesData(**kwargs)
-
-    def create_summary_axes(self, **kwargs) -> SummaryAxesData:
-        """Return a summary AxesData object."""
-        return SummaryAxesData(**kwargs)
-
-    def create_checkbox_axes(self, labels: List[str], **kwargs) -> CheckboxAxesData:
-        """ Return a single CheckboxAxesData object - may later include the dynamic resizing of the axes based on labels """
-        # Possibly compute bounding box from label count, etc.
-        return CheckboxAxesData(**kwargs)
-
-    def create_button_axes(self, num_buttons: int, left_bound: float, right_bound: float, **kwargs) -> List[ButtonAxesData]:
+    #& previously PaneledFigureWrapper.create_button_axes()
+    # TODO: add the actual axes creation later via self.set_axes_object() called from the layout manager
+    def create_button_axes_data(self,
+                                num_buttons: int,
+                                left_bound: float,
+                                right_bound: float,
+                                **kwargs) -> List[ButtonAxesData]:
         """ Return a list of ButtonAxesData objects with computed positions for a horizontal row of `num_buttons` buttons """
         positions = compute_button_positions(num_buttons, left_bound, right_bound)
         button_list = []
@@ -61,3 +79,82 @@ class AxesCreationManager:
             )
             button_list.append(btn_axes)
         return button_list
+
+
+    def create_legend_axes_data(self, **kwargs) -> LegendAxesData:
+        """Return a legend AxesData object."""
+        #& currently unused in the layout manager
+        return LegendAxesData(**kwargs)
+
+    def create_summary_axes_data(self, **kwargs) -> SummaryAxesData:
+        """Return a summary AxesData object."""
+        return SummaryAxesData(**kwargs)
+
+    def create_checkbox_axes_data(self, **kwargs) -> CheckboxAxesData:
+        """ Return a single CheckboxAxesData object - may later include the dynamic resizing of the axes based on labels """
+        # TODO: need to ensure that kwargs are properly passed from the layout manager - they're currently unhandled
+        # Possibly compute bounding box from label count, etc.
+        checkbox_axes =  CheckboxAxesData(**kwargs)
+        # TODO: move this logic later - just removing it from _set_multiple_axes_objects for now
+        # ensure the height is roughly half of what it would be with the entire right panel height
+        checkbox_axes.height *= 0.5
+        return checkbox_axes
+
+
+
+    ##########################################################################################################
+    # GENERAL HELPER FUNCTIONS
+    ##########################################################################################################
+
+    def _get_initialized_subfig(self, panel_data: PanelData) -> plt.Figure:
+        subfig = panel_data.subfigure
+        if subfig is None:
+            raise ValueError(f"Subfigure for panel '{panel_data.name}' is not yet initialized.")
+        return subfig
+
+
+    #& previously part of the implementation of FigureLayoutManager._place_figure_elements()
+    def set_multiple_axes_objects(self, panel_data: PanelData, axes_data: List[AxesData], **axes_init_kwargs):
+        for ax_data in axes_data:
+            if ax_data.axes is None:
+                self.set_axes_object(panel_data, ax_data, **axes_init_kwargs)
+
+
+    #? NOTE: essentially the exact same logic as PaneledFigureWrapper.create_single_axes - could call this instead
+    #& previously PaneledFigureWrapper.create_single_axes()
+    def set_axes_object(self, panel_data: PanelData, axes_data: AxesData, **axes_init_kwargs):
+        """ creates axes in the given panel of the figure using the provided AxesData """
+        subfig = self._get_initialized_subfig(panel_data)
+        # create the axes in the subfigure using the provided AxesData, rescaled to the panel's bounding box
+        panel_data.rescale_axes(axes_data)
+        rect = [axes_data.left, axes_data.bottom, axes_data.width, axes_data.height]
+        ax = subfig.add_axes(rect, **axes_init_kwargs)
+        # initialize the axes with the data from the AxesData object
+        axes_data.initialize_axes(ax)
+
+    #& previously PaneledFigureWrapper.create_subplot_axes()
+    def _get_axes_subplots(self,
+                          subfig: plt.Figure,
+                          #axes_data: List[AxesData],
+                          nrows: int = 1,
+                          ncols: int = 1,
+                          **axes_init_kwargs) -> List[plt.Axes]:
+        """ creates subplots in the given panel subfigure to return a list of Axes objects """
+        # create the subplots in the subfigure using the provided AxesData
+        ax: Union[plt.Axes, List[plt.Axes]] = subfig.subplots(nrows=nrows, ncols=ncols, subplot_kw=axes_init_kwargs)
+        # ensure list format before looping
+        return get_axes_list(ax)
+        # initialize the axes with the data from the AxesData object
+        #!!! RETHINK THIS - won't work right with the button axes for instance
+        #! instead, maybe just call this in the AxesData creation functions for images and buttons
+        # for axes_obj, ax_data in zip(ax, axes_data):
+        #     ax_data.initialize_axes(ax)
+
+
+
+    # def create_button_axes(self, nrows=1, ncols=1, **subplot_kwargs) -> Union[plt.Axes, List[plt.Axes]]:
+    #     """ example helper that places a grid of Axes for buttons in the 'bottom' panel's subfigure """
+    #     # TODO: pass a list of AxesData objects to this function to create the buttons in the bottom panel
+    #     #? just testing this anchor value to see if it can right-align the buttons - remove if it gives any problems:
+    #     subplot_kwargs.setdefault("anchor", "E")  # set the anchor to the east (right) side of the subfigure
+    #     return self.create_subplot_axes("bottom", nrows=nrows, ncols=ncols, **subplot_kwargs)  # create a grid of Axes for buttons

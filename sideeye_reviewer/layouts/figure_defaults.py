@@ -34,9 +34,16 @@ class ConstFigureDefaults:
     AXES_PADDING: float = 0.01
     # button related constants
     BUTTON_SPACING: float = 0.01
-    BUTTON_WIDTH: float = 0.1
+    BUTTON_WIDTH: float = 0.08
     BUTTON_HEIGHT: float = 0.075
     BUTTON_COLOR: str = "#eeeeee"
+    # left panel related constants
+    LEFT_PANEL_LEFT: float = 0.0
+    LEFT_PANEL_BOTTOM: float = 0.0 #field(init=False)
+    LEFT_PANEL_WIDTH: float = 0.12
+    LEFT_PANEL_HEIGHT: float = field(init=False) # set to main panel height
+    LEFT_PANEL_FACECOLOR: str = "lightgray"
+    LEFT_PANEL_ALPHA: float = 0.25
     # # NEW: bottom left panel
     BOTTOM_LEFT_PANEL_LEFT: float = 0.0
     BOTTOM_LEFT_PANEL_BOTTOM: float = 0.0
@@ -53,7 +60,7 @@ class ConstFigureDefaults:
     BOTTOM_RIGHT_PANEL_ALPHA: float = 0.25 # transparency of the axes background
     # button panel related constants
         # intended to be fixed and ever-present, but might treat it the same as the main panel (full width from adjacent unused panels) later
-    BOTTOM_PANEL_LEFT: float = 0.125 #field(init=False) # depends on on bottom left panel right bound
+    BOTTOM_PANEL_LEFT: float = field(init=False) # depends on on bottom left panel right bound
     BOTTOM_PANEL_BOTTOM: float = 0.0
     BOTTOM_PANEL_WIDTH: float = field(init=False) # depends on bottom left and bottom right widths
     BOTTOM_PANEL_HEIGHT: float = field(init=False) # depends on bottom left and right panel heights
@@ -62,18 +69,11 @@ class ConstFigureDefaults:
     # right panel related constants
     RIGHT_PANEL_LEFT: float = field(init=False)
     RIGHT_PANEL_BOTTOM: float = field(init=False)
-    RIGHT_PANEL_WIDTH: float = 0.125 #field(init=False)
+    RIGHT_PANEL_WIDTH: float = 0.12 #field(init=False)
     #? NOTE: might make this based on the main panel, but I'd have to figure out the space reserved for titles
     RIGHT_PANEL_HEIGHT: float = field(init=False)
     RIGHT_PANEL_FACECOLOR: str = "red"
     RIGHT_PANEL_ALPHA: float = 0.25 # transparency of the axes background
-    # left panel related constants
-    LEFT_PANEL_LEFT: float = 0.0
-    LEFT_PANEL_BOTTOM: float = 0.0 #field(init=False)
-    LEFT_PANEL_WIDTH: float = 0.125
-    LEFT_PANEL_HEIGHT: float = 1.0
-    LEFT_PANEL_FACECOLOR: str = "lightgray"
-    LEFT_PANEL_ALPHA: float = 0.25
     # main panel (image plotting region) related constants
     MAIN_PANEL_LEFT: float = field(init=False)
     MAIN_PANEL_BOTTOM: float = field(init=False)
@@ -85,16 +85,19 @@ class ConstFigureDefaults:
     def __post_init__(self):
         """ using the post init to set constants derived from others """
         # padding on top and bottom of the button axes
+        object.__setattr__(self, "BOTTOM_PANEL_LEFT", self.LEFT_PANEL_LEFT) # set to left panel width
         object.__setattr__(self, 'BOTTOM_PANEL_HEIGHT', self.BUTTON_HEIGHT + 4.0*self.AXES_PADDING)
         # bottom left panel resides in the bottom corner, meant for the legend - primarily added with the bottom right to handle subfigure widths and heights
         object.__setattr__(self, 'BOTTOM_LEFT_PANEL_WIDTH', self.LEFT_PANEL_WIDTH) # set to left panel width
         object.__setattr__(self, 'BOTTOM_LEFT_PANEL_HEIGHT', self.BOTTOM_PANEL_HEIGHT) # set to button panel height
         # right-aligned button panel
-        object.__setattr__(self, 'BOTTOM_PANEL_WIDTH', 1.0 - self.BOTTOM_PANEL_LEFT - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
+        object.__setattr__(self, 'BOTTOM_PANEL_WIDTH', 1.0 - self.LEFT_PANEL_WIDTH - self.RIGHT_PANEL_WIDTH) # - self.AXES_PADDING)
         # bottom right panel resides in the bottom corner, meant for either the exit button or radial buttons in the future; also added to handle subfigure consistency
         object.__setattr__(self, 'BOTTOM_RIGHT_PANEL_LEFT', self.BOTTOM_PANEL_LEFT + self.BOTTOM_PANEL_WIDTH) # set to button panel right bound
         object.__setattr__(self, 'BOTTOM_RIGHT_PANEL_WIDTH', self.RIGHT_PANEL_WIDTH) # set to right panel width
         object.__setattr__(self, 'BOTTOM_RIGHT_PANEL_HEIGHT', self.BOTTOM_PANEL_HEIGHT) # set to button panel height
+        # left panel height == main panel height
+        object.__setattr__(self, 'LEFT_PANEL_HEIGHT', 1.0 - self.BOTTOM_PANEL_HEIGHT)
         # main panel
         object.__setattr__(self, 'MAIN_PANEL_LEFT', self.LEFT_PANEL_LEFT + self.LEFT_PANEL_WIDTH)
         object.__setattr__(self, 'MAIN_PANEL_BOTTOM', self.BOTTOM_PANEL_BOTTOM + self.BOTTOM_PANEL_HEIGHT)
@@ -168,7 +171,7 @@ class ConstAxesDefaults:
     LEGEND_BOTTOM: float = field(init=False)
     LEGEND_WIDTH: float = field(init=False)
     LEGEND_HEIGHT: float = field(init=False)
-    LEGEND_COLOR: str = "gray"
+    LEGEND_COLOR: str = "none"
 
 
 
@@ -183,10 +186,10 @@ class ConstAxesDefaults:
         object.__setattr__(self, 'SUMMARY_BOTTOM', position_defaults.LEFT_PANEL_BOTTOM + position_defaults.AXES_PADDING)
         object.__setattr__(self, 'SUMMARY_WIDTH', position_defaults.LEFT_PANEL_WIDTH - 2 * position_defaults.AXES_PADDING)
         object.__setattr__(self, 'SUMMARY_HEIGHT', position_defaults.LEFT_PANEL_HEIGHT - 2 * position_defaults.AXES_PADDING)
-        object.__setattr__(self, 'LEGEND_LEFT', position_defaults.AXES_PADDING)
+        object.__setattr__(self, 'LEGEND_LEFT', position_defaults.LEFT_PANEL_LEFT + position_defaults.AXES_PADDING)
         object.__setattr__(self, 'LEGEND_BOTTOM', position_defaults.AXES_PADDING)
         object.__setattr__(self, 'LEGEND_WIDTH', position_defaults.LEFT_PANEL_WIDTH - 2 * position_defaults.AXES_PADDING)
-        object.__setattr__(self, 'LEGEND_HEIGHT', position_defaults.BOTTOM_PANEL_HEIGHT - position_defaults.AXES_PADDING)
+        object.__setattr__(self, 'LEGEND_HEIGHT', position_defaults.BOTTOM_PANEL_HEIGHT - 2 * position_defaults.AXES_PADDING)
 
     @staticmethod
     def get_checkbox_defaults():

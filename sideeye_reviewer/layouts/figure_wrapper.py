@@ -1,27 +1,13 @@
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable
 #from dataclasses import dataclass, field
 import matplotlib.pyplot as plt
-#import matplotlib.gridspec as gridspec
-#import numpy as np
-from numpy import ndarray as NDarray
 # local imports
 #from .figure_defaults import ConstFigureDefaults
-from .axes_wrappers import AxesData, ButtonAxesData, ImageAxesData, PanelData
+from .axes_wrappers import AxesData, PanelData #, ButtonAxesData, ImageAxesData
 #from .panel_creator import PanelLayoutCreator
 
 
 # TODO: add new dataclasses (maybe as FigureElementLike) and PaneledFigureWrapper to types.py
-
-
-# may add this to the utils later
-def get_axes_list(axes: Union[plt.Axes, List[plt.Axes], NDarray]) -> List[plt.Axes]:
-    """ helper function to ensure that the axes are returned as a list of Axes objects """
-    if not isinstance(axes, (list, NDarray)) and isinstance(axes, plt.Axes):
-        axes = [axes]
-    elif isinstance(axes, NDarray) and axes.ndim > 1:
-        axes = axes.flatten()  # ensure axes is a 1D list of Axes objects
-    # may still want to generalize this function further and assign axes to the panel's axes_items list
-    return list(axes)
 
 
 # TODO: strip out any code blocks related to the dynamic sizing of the figure and handle that in the manager
@@ -65,6 +51,14 @@ class PaneledFigureWrapper:
         # build the top row subfigures then bottom row subfigures
         for row_name, panel_names in self.supported_panels.items():
             self._build_subfigure_row(row_name, panel_names)
+        # draw borders around the panels for visual separation
+        self._draw_panel_borders()
+
+
+    def _draw_panel_borders(self):
+        for panel in self._panels.values():
+            rect = plt.Rectangle((0,0), 1, 1, edgecolor="black", fill=False, clip_on=False, lw=2)
+            panel.subfigure.add_artist(rect, clip=True)
 
 
     def _get_present_panels(self) -> Dict[str, bool]:
@@ -93,44 +87,6 @@ class PaneledFigureWrapper:
     def _add_subpanel(self, name: str, subsubfig: plt.Figure) -> None:
         """ helper function to add a subpanel to the given subfigure """
         self._panels[name].initialize_subfigure(subsubfig)  # set the subfigure for the panel
-
-    #########################################################################################################################
-    # AXES CREATION METHODS
-    #########################################################################################################################
-
-    # TODO: determine if I should pass all the AxesData attributes via subplot_kwargs or use the new `AxesData.initialize_axes` method to set them after creation
-    def create_image_axes(self, nrows=1, ncols=1, **subplot_kwargs) -> Union[plt.Axes, List[plt.Axes]]:
-        """ example helper that places a grid of Axes for images in the 'main' panel's subfigure """
-        if "main" not in self._panels:
-            raise RuntimeError("No 'main' panel found in layout (this should never happen, 'main' is mandatory).")
-        subplot_kwargs.setdefault("aspect", "auto")     # set the aspect ratio to auto for image axes
-        subplot_kwargs.setdefault("adjustable", "box")  # set the adjustable to box for image axes
-        # {'wspace': 0.1}
-        return self.create_subplot_axes("main", nrows=nrows, ncols=ncols, **subplot_kwargs)  # create a grid of Axes for images
-
-    def create_button_axes(self, nrows=1, ncols=1, **subplot_kwargs) -> Union[plt.Axes, List[plt.Axes]]:
-        """ example helper that places a grid of Axes for buttons in the 'bottom' panel's subfigure """
-        # TODO: pass a list of AxesData objects to this function to create the buttons in the bottom panel
-        #? just testing this anchor value to see if it can right-align the buttons - remove if it gives any problems:
-        subplot_kwargs.setdefault("anchor", "E")  # set the anchor to the east (right) side of the subfigure
-        return self.create_subplot_axes("bottom", nrows=nrows, ncols=ncols, **subplot_kwargs)  # create a grid of Axes for buttons
-
-    # TODO: for multiple axes, iteratively call this for those that need accurate positions like buttons
-    def create_single_axes(self, panel_name: str, axes_data: AxesData) -> None: #**subplot_kwargs) -> plt.Axes:
-        panel = self.get_initialized_panel(panel_name)
-        panel.rescale_axes(axes_data)  # normalize the axes position to the subfigure
-        rect = [axes_data.left, axes_data.bottom, axes_data.width, axes_data.height]
-        axes: plt.Axes = panel.subfigure.add_axes(rect)
-        axes_data.initialize_axes(axes)
-
-    #? NOTE: not rescaling axes in this case since it doesn't use explicit bounding boxes
-    def create_subplot_axes(self, panel_name: str, nrows=1, ncols=1, **subplot_kwargs): # -> Union[plt.Axes, List[plt.Axes]]:
-        panel = self.get_initialized_panel(panel_name)
-        axes: Union[plt.Axes, List[plt.Axes]] = panel.subfigure.subplots(nrows=nrows, ncols=ncols, subplot_kw=subplot_kwargs)
-        return get_axes_list(axes)  # ensure that the axes are returned as a list of Axes objects
-        # for ax in axes:
-        #     axes_data.initialize_axes(ax)
-        # FIXME: need to figure out the axes initialization since one axes is supposed to belong to only one AxesData object
 
     #########################################################################################################################
     # PANEL SETTER AND GETTER METHODS

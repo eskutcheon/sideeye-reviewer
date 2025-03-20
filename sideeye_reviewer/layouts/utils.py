@@ -47,17 +47,15 @@ def measure_checkbox_labels(labels, main_fig_size=(12, 7), fontsize=16, line_spa
         line_height = (bbox.y1 - bbox.y0) * line_spacing
         # reduce baseline downward for next label
         baseline_y -= line_height
-    total_w_pts = max_x - min_x
-    total_h_pts = max_y - min_y
+    #? NOTE: think this varies with screen resolution - need to look into it further
     # convert from points to inches (1 point = 1/72 inch)
-    width_inch  = total_w_pts  / 72.0
-    height_inch = total_h_pts / 72.0
+    width_inch  = (max_x - min_x) / 72.0
+    height_inch = (max_y - min_y) / 72.0
     # convert to fraction of your main figure size
     fig_w_inch, fig_h_inch = main_fig_size
     width_fraction  = width_inch  / fig_w_inch
     height_fraction = height_inch / fig_h_inch
-    # add a bit of padding so text doesn’t clip
-    width_fraction  *= 0.7
+    #width_fraction  *= 0.7
     #height_fraction *= 0.8
     return width_fraction, height_fraction
 
@@ -86,8 +84,8 @@ def compute_button_positions(num_buttons: int, left_bound = None, right_bound = 
     left_bound += padding
     positions = []
     for i in range(num_buttons):
-        # create buttons starting from the right boundary
-        left = right_bound - (i+1)*(width + spacing)
+        # create buttons starting from the right boundary - meaning positions are ordered from right to left
+        left = right_bound - (i+1) * (width + spacing)
         # keep the bottom at 0.025 and the height at 0.075 so that the top of the buttons are all at 0.1
         positions.append([left, bottom_bound, width, height])
     return positions

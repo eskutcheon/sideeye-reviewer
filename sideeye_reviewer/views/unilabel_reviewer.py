@@ -42,6 +42,7 @@ class SingleLabelReviewerView(BaseReviewerView):
         num_btn = len(button_axes)
         # drop buttons that have already been assigned (primarily the STOP and UNDO Buttons set by the base class)
             #? NOTE: this will probably be changed in the future when I update the slideshow viewer to inherit from the same base class
+        # TODO: change the way I iterate over open positions to ensure self.buttons_assigned is updated correctly
         open_positions = [pos.get_position().bounds for i, pos in enumerate(button_axes) if not self.buttons_assigned[num_btn - i]]
         for lbl, pos in zip(labels, open_positions):
             btn = ReviewerButton.factory(

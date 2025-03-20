@@ -20,7 +20,8 @@ class MultiLabelReviewerView(BaseReviewerView):
         controller: ControllerLike,
         labels: List[str],
         num_axes: int = 1,
-        use_summary: bool = False,
+        #! TEMP: setting to true unconditionally until it's integrated into the controller
+        use_summary: bool = True,
     ):
         #super().setup_gui(controller, num_axes)
         self.use_summary = use_summary
@@ -37,16 +38,25 @@ class MultiLabelReviewerView(BaseReviewerView):
     def _create_checkboxes(self, labels):
         """ Create the checkboxes for multi-label usage """
         num_labels = len(labels)
-        # # REMINDER: order is [left, bottom, width, height]
         # TODO: might refactor to retrieve AxesData object instead of the axes directly - reference bounds this way
+            #? NOTE: label_props are kwargs for plt.Text - https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
         ax_checkboxes: plt.Axes = self.layout.get_axes("right", "checkboxes") #[0]
         print("ax_checkboxes: ", ax_checkboxes)
         #ax_checkboxes = ax_checkboxes.axes
         print("ax_checkboxes position: ", ax_checkboxes.get_position().bounds)
         # Define properties for labels and checkboxes
-        label_props = {'color': ['black'] * num_labels, 'fontsize': ['x-large'] * num_labels}
-        check_props = {'facecolor': ['blue'] * num_labels, 'sizes': [100] * num_labels}
-        frame_props = {'edgecolor': 'black', 'sizes': [200] * num_labels, 'facecolor': 'white'}
+        # TODO: need to add logic to autofit the checkbox width and optimize the label fontsize
+            # or find a way to use "wrap" for the checkbox's label text properties
+        label_props = {'color': ['black'] * num_labels,
+                       'fontsize': ['large'] * num_labels,
+                       'wrap': [True] * num_labels,
+                       'ma': ["left"] * num_labels,
+                       #'clip_on': [True] * num_labels,
+        }
+        check_props = {'facecolor': ['blue'] * num_labels, 'sizes': [50] * num_labels}
+        frame_props = {'edgecolor': 'black',
+                       'sizes': [120] * num_labels,
+                       'facecolor': 'white'}
         self.checkboxes = CheckButtons(ax=ax_checkboxes, labels=labels, label_props=label_props, check_props=check_props, frame_props=frame_props)
         self.checkboxes.ax.set_title("Select all that apply.", fontsize="x-large")
         print("checkbox dimensions after creation: ", self.checkboxes.ax.get_position().bounds)
@@ -65,6 +75,7 @@ class MultiLabelReviewerView(BaseReviewerView):
             ax_pos=position,
             callback=self.controller.on_next_clicked
         )
+        self.buttons_assigned[-1] = True
 
     def get_checked_labels(self, clear_after=True):
         """ controller calls this to retrieve which boxes are checked """
@@ -72,6 +83,7 @@ class MultiLabelReviewerView(BaseReviewerView):
         status = self.checkboxes.get_status()  # list of bools
         labels = self.checkboxes.labels
         chosen = [label.get_text() for label, s in zip(labels, status) if s]
+        # TODO: might create a dictionary to map aliases back to the actual label names so that I can wrap text properly
         # optionally uncheck the boxes in the view - tbh, not sure why I wouldn't but this was recommended
         if clear_after:
             self.checkboxes.clear()

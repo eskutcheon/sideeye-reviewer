@@ -70,6 +70,7 @@ class BaseReviewerView:
         self.fig.canvas.mpl_connect("close_event", self._on_close)
         # create base buttons (STOP, UNDO) in the new structure, setting their callbacks later
         self._create_base_buttons()
+        plt.tight_layout()
 
     def generate_layout(self, num_axes: int = 1, num_buttons: int = 2, labels: List[str] = None, use_legend: bool = True, use_summary: bool = False, use_checkboxes: bool = False):
         """ Generate the layout for the figure, subplots, etc. """
@@ -89,8 +90,7 @@ class BaseReviewerView:
     def _create_base_buttons(self):
         """ Creates STOP and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
         #? NOTE: these are returned in reverse order so that the rightmost button is at index 0
-        btn_axes: List['AxesData'] = self.layout.get_button_axes()
-        # TODO: I foresee it being a problem trying to pass self.fig to the factory method - I might want to add a "parent" attribute to AxesData for the subfigs
+        btn_axes = self.layout.get_button_axes()
         undo_ax = btn_axes[1].axes
         stop_ax = btn_axes[0].axes
         self.buttons_assigned[:1] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
@@ -104,7 +104,7 @@ class BaseReviewerView:
         )
         self.stop_button = ReviewerButton.factory(
             fig = subfig,
-            # TODO: might want to change all instances of "STOP" buttons to "EXIT" for consistency with the viewer
+            # TODO: might want to change all uses of "STOP" to "EXIT" for consistency with the viewer
             label = "STOP",
             ax_pos = stop_ax.get_position().bounds,
             callback = self.controller.on_stop_clicked
@@ -116,6 +116,7 @@ class BaseReviewerView:
             #ax = self.layout.get_axes("summary")
             self.update_summary("Awaiting Label Selection...")
 
+
     def _create_label_buttons(self, labels):
         raise NotImplementedError("Subclasses must implement this method to create label buttons")
 
@@ -123,23 +124,28 @@ class BaseReviewerView:
     def _create_legend(self, legend_dict: Dict[str, str] = None):
         # bottom left corner to place the legend
         if legend_dict:
+            panel_bbox = list(self.layout.get_panel_position("bottom_left"))
+            print("trying to figure out how the bottom left panel changed width:")
+            print("bottom left panel bbox: ", self.layout.get_subfigure("bottom_left").bbox.bounds)
+            print("left panel bbox: ", self.layout.get_subfigure("left").bbox.bounds)
+            # TODO: update this adjustment to be set dynamically based on the difference of the panel bbox and legend bbox
+            #panel_bbox[0] += 0.01  # move the legend slightly to the right
             legend_kwargs = {
-                "loc": "center", #"lower left",
-                "bbox_to_anchor": self.layout.get_panel_position("bottom_left"),
+                "loc": "center",
+                "bbox_to_anchor": panel_bbox,
+                #"bbox_to_anchor": self.layout.get_axes("bottom_left", "legend").get_position().bounds,
                 "fontsize": "x-large",
             }
-            position = self.layout.get_panel_position("left")
-            if position:
-                #position: Tuple[float, float] = self.layout.get_axes("legend").get_position().p0
-                legend_kwargs["bbox_to_anchor"] = self.layout.get_panel_position("left")[:2]
+            #print("legend bbox: ", legend_kwargs["bbox_to_anchor"])
             for label, color in legend_dict.items():
                 plt.plot([], [], color=color, label=label, linewidth=6, alpha=0.4)
             self.fig.legend(**legend_kwargs)
+            # subfig = self.layout.get_subfigure("bottom_left")
+            # subfig.legend(**legend_kwargs)
 
     def display_image(self, image, ax_idx=0):
         """ show or update an image on self.axs; adjust accordingly for multiple axes """
         # if it's the first call, store the imshow result; otherwise update set_data().
-        ### ax = self.layout.get_image_subaxes(ax_idx)
         ax = self.layout.get_image_subaxes(ax_idx).axes
         if len(self.canvas_images) > ax_idx:
             self.canvas_images[ax_idx].set_data(image)
