@@ -36,7 +36,7 @@ class ConstFigureDefaults:
     BUTTON_SPACING: float = 0.01
     BUTTON_WIDTH: float = 0.08
     BUTTON_HEIGHT: float = 0.075
-    BUTTON_COLOR: str = "#eeeeee"
+    BUTTON_COLOR: str = "none" #"#eeeeee"
     # left panel related constants
     LEFT_PANEL_LEFT: float = 0.0
     LEFT_PANEL_BOTTOM: float = 0.0 #field(init=False)

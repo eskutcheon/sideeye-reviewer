@@ -70,6 +70,7 @@ class BaseReviewerView:
         self.fig.canvas.mpl_connect("close_event", self._on_close)
         # create base buttons (STOP, UNDO) in the new structure, setting their callbacks later
         self._create_base_buttons()
+        # unfortunately, it seems that subfigure objects don't support setting the layout engine and using fig.set_layout() doesn't work correctly
         plt.tight_layout()
 
     def generate_layout(self, num_axes: int = 1, num_buttons: int = 2, labels: List[str] = None, use_legend: bool = True, use_summary: bool = False, use_checkboxes: bool = False):
@@ -93,17 +94,19 @@ class BaseReviewerView:
         btn_axes = self.layout.get_button_axes()
         undo_ax = btn_axes[1].axes
         stop_ax = btn_axes[0].axes
-        self.buttons_assigned[:1] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
+        self.buttons_assigned[:2] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
         # Positions: [left, bottom, width, height]
-        subfig = self.layout.get_subfigure("bottom")
+        #subfig = self.layout.get_subfigure("bottom")
         self.undo_button = ReviewerButton.factory(
-            fig = subfig,
+            undo_ax,
+            #fig = subfig,
             label = "UNDO",
             ax_pos = undo_ax.get_position().bounds,
             callback = self.controller.on_undo_clicked
         )
         self.stop_button = ReviewerButton.factory(
-            fig = subfig,
+            stop_ax,
+            #fig = subfig,
             # TODO: might want to change all uses of "STOP" to "EXIT" for consistency with the viewer
             label = "STOP",
             ax_pos = stop_ax.get_position().bounds,

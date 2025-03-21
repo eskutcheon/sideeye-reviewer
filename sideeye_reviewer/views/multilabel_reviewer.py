@@ -65,14 +65,16 @@ class MultiLabelReviewerView(BaseReviewerView):
     def add_next_button(self):
         # # NOTE: selecting first element since there's only one in this case and that's how the factory expects it
         # get leftmost button to assign "NEXT" label (since get_button_axes() returns them in reverse order)
-        print(self.layout.get_button_axes())
-        position = self.layout.get_button_axes()[-1].axes.get_position().bounds
-        subfig = self.layout.get_subfigure("bottom")
+        button_axes_data = self.layout.get_button_axes()
+        # set to first available button position
+        button_ax = button_axes_data[-1].axes
+        #subfig = self.layout.get_subfigure("bottom")
         # FIXME: need to fix the position back into something relevant to the enclosing panel
         self.next_button = ReviewerButton.factory(
-            fig=subfig,
+            #fig=subfig,
+            button_ax,
             label="NEXT",
-            ax_pos=position,
+            ax_pos=button_ax.get_position().bounds,
             callback=self.controller.on_next_clicked
         )
         self.buttons_assigned[-1] = True

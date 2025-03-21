@@ -38,19 +38,23 @@ class SingleLabelReviewerView(BaseReviewerView):
         """ called after the base class sets up the figure and base buttons to place label-specific buttons """
         #? NOTE: these are returned in reverse order so that the rightmost button is at index 0
         # reversing button axes order back to left-to-right to lay out labels in the order they were given
-        button_axes: List[plt.Axes] = [ax_data.axes for ax_data in self.layout.get_button_axes()][::-1]
+        button_axes_data = self.layout.get_button_axes()[::-1]
+        button_axes: List[plt.Axes] = [ax_data.axes for ax_data in button_axes_data]
         num_btn = len(button_axes)
+        #subfig = self.layout.get_subfigure("bottom")
         # drop buttons that have already been assigned (primarily the STOP and UNDO Buttons set by the base class)
             #? NOTE: this will probably be changed in the future when I update the slideshow viewer to inherit from the same base class
-        # TODO: change the way I iterate over open positions to ensure self.buttons_assigned is updated correctly
-        open_positions = [pos.get_position().bounds for i, pos in enumerate(button_axes) if not self.buttons_assigned[num_btn - i]]
-        for lbl, pos in zip(labels, open_positions):
+        available_axes = []
+        for i, ax in enumerate(button_axes):
+            if not self.buttons_assigned[num_btn - i - 1]:
+                available_axes.append(ax)
+                self.buttons_assigned[num_btn - i - 1] = True  # mark this button as assigned
+        for lbl, ax in zip(labels, available_axes):
             btn = ReviewerButton.factory(
-                #fig=self.fig,
-                #! TEMP
-                fig=self.layout.get_subfigure("bottom"),
+                #fig=subfig,
+                ax,
                 label=lbl.upper(),
-                ax_pos=pos, #.get_position().bounds,
+                ax_pos = ax.get_position().bounds,
                 callback = self.controller.get_on_label_clicked_cb(lbl)
             )
             self.label_buttons.append(btn)

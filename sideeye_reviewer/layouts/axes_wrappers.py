@@ -118,7 +118,7 @@ class CheckboxAxesData(AxesData):
             height=height,
             **kwargs
         )
-        print(f"CheckboxAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
+        #print(f"CheckboxAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("checkboxes", left, bottom, width, height, **kwargs)
 
 
@@ -134,7 +134,7 @@ class SummaryAxesData(AxesData):
             height=height,
             **kwargs
         )
-        print(f"SummaryAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
+        #print(f"SummaryAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("summary", left, bottom, width, height, **kwargs)
 
 class LegendAxesData(AxesData):
@@ -149,7 +149,7 @@ class LegendAxesData(AxesData):
             height=height,
             **kwargs
         )
-        print(f"LegendAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
+        #print(f"LegendAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("legend", left, bottom, width, height, **kwargs)
 
 
@@ -168,7 +168,7 @@ class ButtonAxesData(AxesData):
             height=height,
             **kwargs
         )
-        print(f"ButtonAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
+        #print(f"ButtonAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("buttons", left, bottom, width, height, **kwargs)
 
 
@@ -181,7 +181,7 @@ class ImageAxesData(AxesData):
             raise ValueError("ImageAxesData must be instantiated with an existing plt.Axes object")
         pos = ax.get_position().bounds
         kwargs.update({"left": pos[0], "bottom": pos[1], "width": pos[2], "height": pos[3]})
-        print(f"ImageAxesData kwargs: {kwargs}")
+        #print(f"ImageAxesData kwargs: {kwargs}")
         super().__init__("image", **kwargs)
         self.initialize_axes(ax)  # set the facecolor and alpha for the axes
 
