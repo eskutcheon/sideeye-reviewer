@@ -2,9 +2,7 @@ from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable
 #from dataclasses import dataclass, field
 import matplotlib.pyplot as plt
 # local imports
-#from .figure_defaults import ConstFigureDefaults
 from .axes_wrappers import AxesData, PanelData #, ButtonAxesData, ImageAxesData
-#from .panel_creator import PanelLayoutCreator
 
 
 # TODO: add new dataclasses (maybe as FigureElementLike) and PaneledFigureWrapper to types.py
@@ -74,8 +72,9 @@ class PaneledFigureWrapper:
     def _build_subfigure_row(self, row_name: str, panel_names: List[str]) -> None:
         """ helper function to build a subfigure row with the given panel names """
         #? NOTE: widths are normalized by default so this should never make overlapping subfigures
-        print("self.panel_is_set:", self.panel_is_set)
         subfig_widths = [self._panels[name].width for name in panel_names if self.panel_is_set[name]]
+        #? NOTE: pretty sure the implicit width normalization is what causes top and bottom borders to be misaligned when the list lengths are different
+        #print("subfig_widths: ", subfig_widths)
         row_subfigs = getattr(self, f"{row_name}_subfig").subfigures(nrows=1, ncols=len(subfig_widths), width_ratios=subfig_widths)
         col_idx = 0
         for panel_name in panel_names:

@@ -7,7 +7,7 @@ SORTER_LABELS = ['agree', 'disagree', 'uncertain']
 LEGEND_LABELS = {'clean': 'black', 'transparent': 'green', 'semi-transparent': 'blue', 'opaque': 'red'}
 
 
-###? NOTE: kept for reference on how initialization has changes, but the code below was removed ###
+###? NOTE: kept for reference on how initialization has changed, but the code below was removed ###
 # def test_review_v1(image_folders, output_dir, num_axes=2):
 #     from sideeye_reviewer.core.sorter import ImageSorter
 #     from sideeye_reviewer.core.unilabel_reviewer import SingleLabelReviewer
@@ -25,7 +25,7 @@ def test_review_v2(image_folders, output_dir, num_axes=2):
     from sideeye_reviewer.views.unilabel_reviewer import SingleLabelReviewerView
     image_folders = image_folders[:num_axes]
     json_name = f"test_unilabel_sort_{num_axes}img_v2.json"
-    data_manager = DataManager(image_folders, output_dir, SORTER_LABELS, json_name=json_name, enable_sorting=True)
+    data_manager = DataManager(image_folders, output_dir, SORTER_LABELS, json_name=json_name, enable_sorting=True) #, summary_type="something")
     reviewer = SingleLabelReviewerView(legend_dict=LEGEND_LABELS)
     controller = ReviewerController(data_manager, reviewer)
     controller.initialize()

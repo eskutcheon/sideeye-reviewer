@@ -31,6 +31,7 @@ class AxesData:
     height: float
     color: Optional[str] = "white"
     alpha: Optional[float] = 1.0  # transparency of the axes background
+    use_border: Optional[bool] = False  # whether to draw a border around the axes
     title: Optional[str] = None
     title_size: Optional[Union[int, str]] = "large"
     axes: plt.Axes = None
@@ -44,6 +45,11 @@ class AxesData:
             ax.set_alpha(self.alpha)
         if self.title:
             ax.set_title(self.title, fontsize=self.title_size)
+        if self.use_border:
+            rect = plt.Rectangle((0, 0), 1, 1, edgecolor="black", fill=False, lw=1, clip_on = False) #, transform=ax.transAxes)
+            ax.add_artist(rect)
+            #ax.patch.set_edgecolor("black")
+            #ax.patch.set_linewidth(20)
         self.axes = ax  # set the axes for the data
 
     def update_position(self, left: float, bottom: float, width: float, height: float):
@@ -52,6 +58,10 @@ class AxesData:
         self.bottom = bottom
         self.width = width
         self.height = height
+
+    def __repr__(self):
+        attr = ", ".join(f"{k}={v}" for k, v in self.__dict__.items())
+        return f"AxesData({attr})"
 
 
 @dataclass

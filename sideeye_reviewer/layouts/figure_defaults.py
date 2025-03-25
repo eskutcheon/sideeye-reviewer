@@ -178,14 +178,21 @@ class ConstAxesDefaults:
     def __post_init__(self):
         """ using the post init to set constants derived from ConstFigureDefaults """
         position_defaults = ConstFigureDefaults()
+        # checkbox position:
         object.__setattr__(self, 'CHECKBOX_LEFT', position_defaults.RIGHT_PANEL_LEFT + position_defaults.AXES_PADDING)
         object.__setattr__(self, 'CHECKBOX_BOTTOM', position_defaults.RIGHT_PANEL_BOTTOM + position_defaults.AXES_PADDING)
         object.__setattr__(self, 'CHECKBOX_WIDTH', position_defaults.RIGHT_PANEL_WIDTH - 2 * position_defaults.AXES_PADDING)
-        object.__setattr__(self, 'CHECKBOX_HEIGHT', position_defaults.RIGHT_PANEL_HEIGHT - 2 * position_defaults.AXES_PADDING)
+        # restrict height so that it occupies the bottom half of the right panel
+        object.__setattr__(self, 'CHECKBOX_HEIGHT', 0.5 * (position_defaults.RIGHT_PANEL_HEIGHT - 2 * position_defaults.AXES_PADDING))
+        # summary axis position:
         object.__setattr__(self, 'SUMMARY_LEFT', position_defaults.LEFT_PANEL_LEFT + position_defaults.AXES_PADDING)
-        object.__setattr__(self, 'SUMMARY_BOTTOM', position_defaults.LEFT_PANEL_BOTTOM + position_defaults.AXES_PADDING)
+        # adjust bottom and height to roughly center the summary box in the left panel
+        object.__setattr__(self, 'SUMMARY_HEIGHT', 0.5 * (position_defaults.LEFT_PANEL_HEIGHT - 2 * position_defaults.AXES_PADDING))
+        # base on the height, adjust the bottom so that it's centered:
+        object.__setattr__(self, 'SUMMARY_BOTTOM', position_defaults.LEFT_PANEL_BOTTOM + position_defaults.AXES_PADDING +  0.5 * self.SUMMARY_HEIGHT)
+        #object.__setattr__(self, 'SUMMARY_BOTTOM', position_defaults.LEFT_PANEL_BOTTOM + position_defaults.AXES_PADDING)
         object.__setattr__(self, 'SUMMARY_WIDTH', position_defaults.LEFT_PANEL_WIDTH - 2 * position_defaults.AXES_PADDING)
-        object.__setattr__(self, 'SUMMARY_HEIGHT', position_defaults.LEFT_PANEL_HEIGHT - 2 * position_defaults.AXES_PADDING)
+        # legend position (for the anchor point of the legend axes)
         object.__setattr__(self, 'LEGEND_LEFT', position_defaults.LEFT_PANEL_LEFT + position_defaults.AXES_PADDING)
         object.__setattr__(self, 'LEGEND_BOTTOM', position_defaults.AXES_PADDING)
         object.__setattr__(self, 'LEGEND_WIDTH', position_defaults.LEFT_PANEL_WIDTH - 2 * position_defaults.AXES_PADDING)

@@ -18,6 +18,8 @@ class BaseReviewController:
         """
         # TODO: should be giving this a more general data manager object of some sort
         self.data_manager = data_manager
+        # retrieve whether to use a summary box from the data manager
+        self.use_summary = self.data_manager.summary_type is not None
         self.images_per_fig = self.data_manager.images_per_batch
         self.view = view
         self.file_list: List[str] = []
@@ -50,6 +52,11 @@ class BaseReviewController:
         # if view has a title or progress info:
         print_idx = self.num_files + idx + 1 if idx < 0 else idx + 1
         self.view.update_title(f"{self.view.fig_title}", f"{filename}\nProgress: {print_idx}/{len(self.file_list)}")
+        # TODO: add logic to retrieve data for the summary box if applicable - using_summary should now be passed to the viewer constructor
+        # self.view.update_summary(...)
+        if self.use_summary:
+            summary_text = self.data_manager.generate_summary_text()
+            self.view.update_summary(summary_text)
 
 
     def on_window_closed(self):

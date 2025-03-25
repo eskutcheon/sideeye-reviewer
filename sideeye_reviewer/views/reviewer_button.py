@@ -17,16 +17,16 @@ class ReviewerButton:
         self.ax_pos = ax_pos
         self.callback = callback
         self.hovercolor = hovercolor
+        self.label_size = 24  # default font size for the button label
         self.button_widget = None  # will hold the Button object once created
         self.use_bevel = True  # change later if needed
 
-    def create_button(self, ax: plt.Axes): #fig: plt.Figure):
+    def create_button(self, ax: plt.Axes):
         """ Actually create the Axes and the Button, then attach the callback """
-            # it only works now because the object is initialized by factory() then the button is immediately created
-        #ax = fig.add_axes(self.ax_pos)
         self.button_widget = Button(ax, self.label, hovercolor=self.hovercolor)
-        self.button_widget.label.set_fontsize(24)
+        self.button_widget.label.set_fontsize(self.label_size)
         self.button_widget.on_clicked(self.callback)
+        # REMINDER: I set the button axes to have alpha = 0 - without styling, it would blend into the panel background
         if self.button_widget is not None and self.use_bevel:
             self.stylize_button(ax)
 

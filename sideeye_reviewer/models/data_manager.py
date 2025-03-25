@@ -23,6 +23,7 @@ class DataManager:
         out_dir: Optional[str] = None,
         labels: Optional[List[str]] = None,
         file_list: Optional[List[str]] = None,
+        summary_type: Optional[str] = None,
         json_name: str = "sorting_output.json",
         enable_sorting: bool = True,
         shuffle = False
@@ -42,6 +43,7 @@ class DataManager:
             # for instance, using a data generation model, it should be base image + number to generate
         self.images_per_batch = len(self.image_folders)
         self.file_list = file_list
+        self.summary_type = summary_type
         self.enable_sorting = enable_sorting
         self.labels = labels or []
         self.out_dir = out_dir
@@ -59,6 +61,9 @@ class DataManager:
         # keep a pipeline of transformations to apply to each loaded image, e.g. edge detection overlays, histograms, etc.
         # TODO: may end up creating an equivalent of torchvision.transforms.Compose for numpy arrays for this
         self.transform_pipeline: List[TransformFn] = []
+        #!!! DEBUGGING - for testing the summary box rendering - remove later
+        self.temp_iter = 0
+        
 
     def _verify_num_folders(self):
         """ Check if the number of image folders is valid for the current setup. """
@@ -160,3 +165,11 @@ class DataManager:
                 return None
             return files_checked
         return None
+
+    def generate_summary_text(self) -> str:
+        """ generate text about the data based on self.summary_type to be displayed by the viewer in a summary box """
+        # TODO: compare summary_type against supported summary types and generate text accordingly
+        self.temp_iter += 1
+        # testing that this is updating and not drawing on top of existing text
+        # TODO: later this should be based on querying the current image (FIXME: apparently that's in the sorter at the moment)
+        return f"TESTING: summary box for type '{self.summary_type}' - curr value: {self.temp_iter}"

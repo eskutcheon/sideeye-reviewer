@@ -27,15 +27,17 @@ class BaseReviewerView:
         self.canvas_images = []
         self._stop_requested = False
         self.controller: ControllerLike = None  # set when we initialize the UI with setup_gui() called from the controller
-        #! TEMP: setting to true unconditionally until it's integrated into the controller
-        self.use_summary = True
+        #! TEMP: setting to False unconditionally until it's integrated into the controller
+        self.use_summary = False
         self.buttons_assigned = None # set after creation of the layout manager to index button positions
         #? NOTE: needed to avoid repeatedly overlaying text on the same position in the figure after the timer is added
         #self.subtitle_pos = (0.5, 0.95)  # default position for the subtitle text in the figure
         self.subtitle: plt.Text = None  # used to store the subtitle text object for updating
         self.warning_text: plt.Text = None  # used to store the warning text object for updating without continually creating new text objects
+        self.summary_text: plt.Text = None  # used to store the summary text object for updating without continually creating new text objects
         # Buttons stored here
-        self.stop_button = None
+        # self.stop_button = None
+        self.exit_button = None
         self.undo_button = None
 
     def setup_gui(
@@ -68,10 +70,6 @@ class BaseReviewerView:
         maximize_window() # might need to come before plt.show
         # hook UI events for closing the figure to a cleanup function
         self.fig.canvas.mpl_connect("close_event", self._on_close)
-        # create base buttons (STOP, UNDO) in the new structure, setting their callbacks later
-        self._create_base_buttons()
-        # unfortunately, it seems that subfigure objects don't support setting the layout engine and using fig.set_layout() doesn't work correctly
-        plt.tight_layout()
 
     def generate_layout(self, num_axes: int = 1, num_buttons: int = 2, labels: List[str] = None, use_legend: bool = True, use_summary: bool = False, use_checkboxes: bool = False):
         """ Generate the layout for the figure, subplots, etc. """
@@ -89,11 +87,12 @@ class BaseReviewerView:
     # TODO: feel like this should be added to the layout manager instead of here - could just pass the controller callbacks in a list
         # It does call into question the use of a new AxesManager like I wrote about here and there
     def _create_base_buttons(self):
-        """ Creates STOP and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
+        """ Creates EXIT and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
         #? NOTE: these are returned in reverse order so that the rightmost button is at index 0
         btn_axes = self.layout.get_button_axes()
+        exit_ax = btn_axes[0].axes
         undo_ax = btn_axes[1].axes
-        stop_ax = btn_axes[0].axes
+        #stop_ax = btn_axes[0].axes
         self.buttons_assigned[:2] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
         # Positions: [left, bottom, width, height]
         #subfig = self.layout.get_subfigure("bottom")
@@ -104,21 +103,18 @@ class BaseReviewerView:
             ax_pos = undo_ax.get_position().bounds,
             callback = self.controller.on_undo_clicked
         )
-        self.stop_button = ReviewerButton.factory(
-            stop_ax,
+        self.exit_button = ReviewerButton.factory(
+        # self.stop_button = ReviewerButton.factory(
+            # stop_ax,
+            exit_ax,
             #fig = subfig,
             # TODO: might want to change all uses of "STOP" to "EXIT" for consistency with the viewer
             label = "STOP",
-            ax_pos = stop_ax.get_position().bounds,
-            callback = self.controller.on_stop_clicked
+            # ax_pos = stop_ax.get_position().bounds,
+            ax_pos = exit_ax.get_position().bounds,
+            #callback = self.controller.on_stop_clicked
+            callback = self.controller.on_exit_clicked
         )
-
-    def _create_summary_box(self):
-        """ ensures the summary box is properly instantiated """
-        if self.use_summary:
-            #ax = self.layout.get_axes("summary")
-            self.update_summary("Awaiting Label Selection...")
-
 
     def _create_label_buttons(self, labels):
         raise NotImplementedError("Subclasses must implement this method to create label buttons")
@@ -128,9 +124,6 @@ class BaseReviewerView:
         # bottom left corner to place the legend
         if legend_dict:
             panel_bbox = list(self.layout.get_panel_position("bottom_left"))
-            print("trying to figure out how the bottom left panel changed width:")
-            print("bottom left panel bbox: ", self.layout.get_subfigure("bottom_left").bbox.bounds)
-            print("left panel bbox: ", self.layout.get_subfigure("left").bbox.bounds)
             # TODO: update this adjustment to be set dynamically based on the difference of the panel bbox and legend bbox
             #panel_bbox[0] += 0.01  # move the legend slightly to the right
             legend_kwargs = {
@@ -139,7 +132,6 @@ class BaseReviewerView:
                 #"bbox_to_anchor": self.layout.get_axes("bottom_left", "legend").get_position().bounds,
                 "fontsize": "x-large",
             }
-            #print("legend bbox: ", legend_kwargs["bbox_to_anchor"])
             for label, color in legend_dict.items():
                 plt.plot([], [], color=color, label=label, linewidth=6, alpha=0.4)
             self.fig.legend(**legend_kwargs)
@@ -167,7 +159,7 @@ class BaseReviewerView:
             self.fig.suptitle(text, fontsize=24, fontweight="bold", wrap=True)
             if subtitle:
                 self.update_subtitle(subtitle)  # update the subtitle if provided
-            self.fig.canvas.draw()
+            self.fig.canvas.draw_idle()
 
     def update_subtitle(self, text):
         """ updates the subtitle text in the figure """
@@ -183,13 +175,14 @@ class BaseReviewerView:
     def update_summary(self, text):
         """ updates the summary box with new text """
         if self.use_summary:
-            # FIXME: may not be using this long term - should work for now
-            summary_ax = self.layout.get_axes("left", "summary")
-            if summary_ax:
-                summary_ax.clear()
-                summary_ax.text(0.5, 0.5, text, ha="center", va="center", fontsize="large")
-                summary_ax.axis("off")
-                self.fig.canvas.draw_idle()  # Update without forcing new figures
+            if self.summary_text is not None:
+                self.summary_text.set_text(text)
+            else:
+                # FIXME: may not be using this long term - should work for now
+                summary_ax = self.layout.get_axes("left", "summary")
+                if summary_ax:
+                    self.summary_text = summary_ax.text(0.5, 0.5, text, wrap=True, ha="center", va="center", fontsize="large")
+            self.fig.canvas.draw_idle()  # Update without forcing new figures
 
     def display_warning(self, message="Warning!", duration=2500):
         """ replicates the old 'display_warning()' from base_reviewer.py with purely UI functionality """
@@ -213,7 +206,7 @@ class BaseReviewerView:
         timer.start()
 
     def main_loop(self):
-        """ Main loop: keep going until STOP is triggered. The controller can call this,
+        """ Main loop: keep going until EXIT is triggered. The controller can call this,
             but the loop logic itself is the same: keep calling plt.pause() until stopped.
         """
         try:

@@ -1,11 +1,25 @@
 import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable, Any
 # local imports
-from .utils import disable_all_axis_elements
 from .axes_wrappers import AxesData, ButtonAxesData, ImageAxesData, PanelData
 from .figure_wrapper import PaneledFigureWrapper
 from .figure_defaults import ConstFigureDefaults, SUPPORTED_PANEL_NAMES
 from .axes_manager import AxesCreationManager
+
+
+def disable_all_axis_elements():
+    """ disable all axis elements (ticks, labels, spines) globally to avoid the issues with ax.axis("off") overwriting stuff 
+        - TODO: will probably need to revisit this when implementing figures to plot as an image through the data generation model
+    """
+    # went through hell debugging this, so this is probably the easiest solution I'm gonna get for now
+    plt.rcParams['axes.spines.left'] = False
+    plt.rcParams['axes.spines.right'] = False
+    plt.rcParams['axes.spines.top'] = False
+    plt.rcParams['axes.spines.bottom'] = False
+    plt.rcParams['xtick.bottom'] = False
+    plt.rcParams['xtick.labelbottom'] = False
+    plt.rcParams['ytick.labelleft'] = False
+    plt.rcParams['ytick.left'] = False
 
 
 class FigureLayoutManager:

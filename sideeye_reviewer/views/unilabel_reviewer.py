@@ -24,15 +24,20 @@ class SingleLabelReviewerView(BaseReviewerView):
     ):
         self.use_summary = use_summary
         use_legend = bool(self.legend_dict)
-        n_btn = len(labels) + 2  # 2 for the base buttons (STOP, UNDO) and the rest for labels
+        n_btn = len(labels) + 2  # 2 for the base buttons (EXIT, UNDO) and the rest for labels
         # call the base class's setup_gui() to create the figure, subplots, etc.
         super().setup_gui(controller, num_axes, num_buttons = n_btn, use_legend=use_legend, use_summary = use_summary)
-        # Now create label-specific buttons
+        # create base buttons (EXIT, UNDO) in the new structure, setting their callbacks later
+        self._create_base_buttons()
+        # unfortunately, it seems that subfigure objects don't support setting the layout engine and using fig.set_layout() doesn't work correctly
+        self.fig.tight_layout()
+        # create label-specific buttons
         self._create_label_buttons(labels)
         # Optionally create the legend
         self._create_legend(self.legend_dict)
         # initialize summary box with filler text
-        self._create_summary_box()
+        # create summary box if using summary
+        self.update_summary("Awaiting Label Selection...")
 
     def _create_label_buttons(self, labels: List[str]):
         """ called after the base class sets up the figure and base buttons to place label-specific buttons """
@@ -42,7 +47,7 @@ class SingleLabelReviewerView(BaseReviewerView):
         button_axes: List[plt.Axes] = [ax_data.axes for ax_data in button_axes_data]
         num_btn = len(button_axes)
         #subfig = self.layout.get_subfigure("bottom")
-        # drop buttons that have already been assigned (primarily the STOP and UNDO Buttons set by the base class)
+        # drop buttons that have already been assigned (primarily the EXIT and UNDO Buttons set by the base class)
             #? NOTE: this will probably be changed in the future when I update the slideshow viewer to inherit from the same base class
         available_axes = []
         for i, ax in enumerate(button_axes):

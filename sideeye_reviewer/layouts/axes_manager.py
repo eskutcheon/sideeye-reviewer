@@ -2,9 +2,8 @@ import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Callable, Union, Tuple, Iterable, Any
 from numpy import ndarray as NDarray
 # local imports
-from .utils import disable_all_axis_elements, measure_checkbox_labels, compute_button_positions
 from .axes_wrappers import AxesData, ButtonAxesData, CheckboxAxesData, SummaryAxesData, LegendAxesData, ImageAxesData, PanelData
-from .figure_defaults import ConstFigureDefaults, ConstAxesDefaults, SUPPORTED_PANEL_NAMES
+from .figure_defaults import ConstFigureDefaults
 
 
 # may add this to the utils later
@@ -65,7 +64,7 @@ class AxesCreationManager:
                                 right_bound: float,
                                 **kwargs) -> List[ButtonAxesData]:
         """ Return a list of ButtonAxesData objects with computed positions for a horizontal row of `num_buttons` buttons """
-        positions = compute_button_positions(num_buttons, left_bound, right_bound)
+        positions = self.compute_button_positions(num_buttons, left_bound, right_bound)
         button_list = []
         # leaving it like this for readability but it was previously just pos in positions
         for left, bottom, width, height in positions:
@@ -88,6 +87,7 @@ class AxesCreationManager:
 
     def create_summary_axes_data(self, **kwargs) -> SummaryAxesData:
         """Return a summary AxesData object."""
+        kwargs.setdefault("use_border", True)
         return SummaryAxesData(**kwargs)
 
     def create_checkbox_axes_data(self, **kwargs) -> CheckboxAxesData:
@@ -97,7 +97,7 @@ class AxesCreationManager:
         checkbox_axes =  CheckboxAxesData(**kwargs)
         # TODO: move this logic later - just removing it from _set_multiple_axes_objects for now
         # ensure the height is roughly half of what it would be with the entire right panel height
-        checkbox_axes.height *= 0.5
+        #checkbox_axes.height *= 0.5
         return checkbox_axes
 
 
@@ -158,3 +158,74 @@ class AxesCreationManager:
     #     #? just testing this anchor value to see if it can right-align the buttons - remove if it gives any problems:
     #     subplot_kwargs.setdefault("anchor", "E")  # set the anchor to the east (right) side of the subfigure
     #     return self.create_subplot_axes("bottom", nrows=nrows, ncols=ncols, **subplot_kwargs)  # create a grid of Axes for buttons
+
+
+    @staticmethod
+    def compute_button_positions(num_buttons: int, left_bound = None, right_bound = None) -> List[List[float]]:
+        """ Re-implement get_button_axes using figure-relative coordinates - bottom right aligned """
+        def get_total_width(w: float, s: float) -> float:
+            return (w + s) * num_buttons - s
+        # set default bounds if not provided
+        default_bounds = ConstFigureDefaults()
+        left_bound = left_bound or default_bounds.BOTTOM_PANEL_LEFT
+        right_bound = right_bound or default_bounds.BOTTOM_PANEL_LEFT + default_bounds.BOTTOM_PANEL_WIDTH
+        width, height = default_bounds.BUTTON_WIDTH, default_bounds.BUTTON_HEIGHT
+        bottom_bound = default_bounds.BOTTOM_PANEL_BOTTOM + default_bounds.AXES_PADDING
+        spacing = default_bounds.BUTTON_SPACING
+        total_width = get_total_width(width, spacing)
+        # rescale if total width exceeds available space
+            # eventually, might want to allocate enough vertical space (more than the default 0.15) to have extra button rows
+        if total_width > right_bound - left_bound:
+            scale = (right_bound - left_bound)/total_width
+            width *= scale
+            spacing *= scale
+            total_width = get_total_width(width, spacing)
+        padding = (right_bound - left_bound - total_width)/2
+        left_bound += padding
+        positions = []
+        for i in range(num_buttons):
+            # create buttons starting from the right boundary - meaning positions are ordered from right to left
+            left = right_bound - (i+1) * (width + spacing)
+            # keep the bottom at 0.025 and the height at 0.075 so that the top of the buttons are all at 0.1
+            positions.append([left, bottom_bound, width, height])
+        return positions
+
+
+
+# def measure_checkbox_labels(labels, main_fig_size=(12, 7), fontsize=16, line_spacing=1.2):
+#     """ returns (total_width, total_height) in "text units" for stacked labels,
+#         computed purely via text path metrics (no figure or event loop).
+#     """
+#     from matplotlib.textpath import TextPath
+#     from matplotlib.font_manager import FontProperties
+#     # create FontProperties instance for desired font & size
+#     font = FontProperties(size=fontsize)
+#     # track bounding box extremes for each label - subsequent labels placed at negative y offsets => "stacking" downward
+#     min_x, min_y, max_x, max_y = np.inf, np.inf, -np.inf, -np.inf
+#     baseline_y = 0.0
+#     # iterate over labels while tracking extents
+#     for lbl in labels:
+#         # create TextPath at (x=0, y=baseline_y)
+#         tp = TextPath(xy=(0, baseline_y), s=lbl, prop=font)
+#         # textpath's bounding box => a matplotlib.path.Path in user coords
+#         bbox = tp.get_extents()
+#         # union bounding box
+#         min_x = min(min_x, bbox.x0)
+#         min_y = min(min_y, bbox.y0)
+#         max_x = max(max_x, bbox.x1)
+#         max_y = max(max_y, bbox.y1)
+#         # typical line spacing = line_spacing * single-line offset
+#         line_height = (bbox.y1 - bbox.y0) * line_spacing
+#         # reduce baseline downward for next label
+#         baseline_y -= line_height
+#     #? NOTE: think this varies with screen resolution - need to look into it further
+#     # convert from points to inches (1 point = 1/72 inch)
+#     width_inch  = (max_x - min_x) / 72.0
+#     height_inch = (max_y - min_y) / 72.0
+#     # convert to fraction of your main figure size
+#     fig_w_inch, fig_h_inch = main_fig_size
+#     width_fraction  = width_inch  / fig_w_inch
+#     height_fraction = height_inch / fig_h_inch
+#     #width_fraction  *= 0.7
+#     #height_fraction *= 0.8
+#     return width_fraction, height_fraction

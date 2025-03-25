@@ -26,14 +26,19 @@ class MultiLabelReviewerView(BaseReviewerView):
         #super().setup_gui(controller, num_axes)
         self.use_summary = use_summary
         use_legend = bool(self.legend_dict)
-        n_btn = 3  # 3 for the base buttons (STOP, UNDO) and NEXT for "NEXT" for this subclass
+        n_btn = 3  # 3 for the base buttons (EXIT, UNDO) and NEXT for "NEXT" for this subclass
         super().setup_gui(controller, num_axes, num_buttons = n_btn, use_legend=use_legend, use_summary = use_summary, use_checkboxes = True)
+        # create base buttons (EXIT, UNDO) in the new structure, setting their callbacks later
+        self._create_base_buttons()
+        # unfortunately, it seems that subfigure objects don't support setting the layout engine and using fig.set_layout() doesn't work correctly
+        self.fig.tight_layout()
         # create checkboxes and next button
         self._create_checkboxes(labels)
         self.add_next_button()
         # optionally create a legend the same way
         self._create_legend(self.legend_dict)
-        self._create_summary_box()
+        # create summary box if using summary
+        self.update_summary("Awaiting Label Selection...")
 
     def _create_checkboxes(self, labels):
         """ Create the checkboxes for multi-label usage """

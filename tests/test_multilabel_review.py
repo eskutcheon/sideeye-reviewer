@@ -9,7 +9,7 @@ SORTER_LABELS = ["inaccurate_edges","inaccurate_labels","inaccurate_regions",
 CLASS_LABELS  = {'clean':'black','transparent':'green','semi-transparent':'blue','opaque':'red'}
 
 
-###? NOTE: kept for reference on how initialization has changes, but the code below was removed ###
+###? NOTE: kept for reference on how initialization has changed, but the code below was removed ###
 # def begin_review_v1(image_folders, output_dir, file_list, json_name):
 #     from sideeye_reviewer.core.sorter import ImageSorter
 #     from sideeye_reviewer.core.multilabel_reviewer import MultiLabelReviewer
@@ -30,7 +30,7 @@ def begin_review_v2(image_folders, output_dir, file_list, num_axes=2):
     from sideeye_reviewer.views.multilabel_reviewer import MultiLabelReviewerView
     image_folders = image_folders[:num_axes]
     json_name = f"multilabel_sort_{num_axes}img_v2.json"
-    manager = DataManager(image_folders, output_dir, SORTER_LABELS, file_list, json_name=json_name, enable_sorting=True)
+    manager = DataManager(image_folders, output_dir, SORTER_LABELS, file_list, json_name=json_name, enable_sorting=True) #, summary_type="something")
     reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
     controller = ReviewerController(manager, reviewer)
     controller.initialize()

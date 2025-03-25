@@ -14,7 +14,8 @@ class ReviewerController(BaseReviewController):
     def initialize(self, checkpoint = True):
         super().initialize(checkpoint)
         labels = self.get_category_labels()
-        self.view.setup_gui(self, labels, num_axes = self.data_manager.images_per_batch)
+        #& UPDATE: passing use_summary to the view constructor to handle summary box logic - self.use_summary set by the base class constructor after retrieving it from the data manager
+        self.view.setup_gui(self, labels, num_axes = self.data_manager.images_per_batch, use_summary=self.use_summary)
         if self.file_list:
             self._load_image(0)
         self.view.main_loop()
@@ -29,7 +30,8 @@ class ReviewerController(BaseReviewController):
             self.current_idx -= 1
         self._load_image(self.current_idx)
 
-    def on_stop_clicked(self, event):
+    #def on_stop_clicked(self, event):
+    def on_exit_clicked(self, event):
         """ stops the review and closes the session """
         print("[CONTROLLER] Stopping review. Writing results to JSON...")
         self.data_manager.write_results()
@@ -70,4 +72,5 @@ class ReviewerController(BaseReviewController):
             self._load_image(self.current_idx)
         else:
             print("[CONTROLLER] Reached end of file list. Stopping automatically.")
-            self.on_stop_clicked(None)
+            #self.on_stop_clicked(None)
+            self.on_exit_clicked(None)
