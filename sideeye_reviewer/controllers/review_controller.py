@@ -25,13 +25,12 @@ class ReviewerController(BaseReviewController):
         # NOTE: # "remove=True" triggers bin_manager.undo_sort() internally
         self.data_manager.undo_label()
         # step backwards unless at 0
-        # TODO: remove negative indexing restriction globally after tracking it all down
+        # TODO: remove negative indexing restriction globally after tracking down relevant logic
         if self.current_idx > 0:
             self.current_idx -= 1
         self._load_image(self.current_idx)
 
-    #def on_stop_clicked(self, event):
-    def on_exit_clicked(self, event):
+    def on_exit_clicked(self, event): # formerly `on_stop_clicked`
         """ stops the review and closes the session """
         print("[CONTROLLER] Stopping review. Writing results to JSON...")
         self.data_manager.write_results()
@@ -72,5 +71,4 @@ class ReviewerController(BaseReviewController):
             self._load_image(self.current_idx)
         else:
             print("[CONTROLLER] Reached end of file list. Stopping automatically.")
-            #self.on_stop_clicked(None)
             self.on_exit_clicked(None)

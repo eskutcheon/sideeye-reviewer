@@ -33,15 +33,13 @@ class ReviewerButton:
     def stylize_button(self, ax: plt.Axes):
         """ Apply additional styling to the button if needed """
         # clear existing patches to remove the default rectangle and replace with rounded patch
-        ax_facecolor = ax.get_facecolor()
+        ax_facecolor = ax.get_facecolor() # subfig_facecolor = ax.figure.get_facecolor()
         ax.patch.set_visible(False)
-        #subfig_facecolor = ax.figure.get_facecolor()
         #ax.patch.set_facecolor(subfig_facecolor) #'none')  # make the background transparent
         #ax.patch.set_alpha(0)
         rounded_patch = FancyBboxPatch(
             #(0.05, 0.05), 0.90, 0.90,
             (0.0, 0.0), 1, 1,
-            #boxstyle = "round,pad=0.05,rounding_size=0.1",
             boxstyle = "round,pad=0.0,rounding_size=0.1",
             transform = ax.transAxes,
             facecolor = ax_facecolor, # keep current color
@@ -50,7 +48,7 @@ class ReviewerButton:
             zorder = 1
         )
         ax.add_patch(rounded_patch)
-        # Optionally simulate a "bevel" with a shadow/highlight effect
+        # Optionally simulate a beveled look with a shadow/highlight effect
         highlight = FancyBboxPatch(
             (0.05, 0.1), 1, 1,
             boxstyle = "round,pad=0.0,rounding_size=0.1",

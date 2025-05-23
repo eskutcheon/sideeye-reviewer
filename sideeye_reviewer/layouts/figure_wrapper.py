@@ -108,7 +108,7 @@ class PaneledFigureWrapper:
 
 
     def panel_exists(self, panel_name: str) -> bool:
-        # REMOVE LATER - using the message for debugging for now
+        #! REMOVE LATER - using the message for debugging for now
         if len(self._panels) == 0:
             raise RuntimeError("No panels defined. Please add panels before creating the main figure.")
         return panel_name in self._panels and self.panel_is_set[panel_name]

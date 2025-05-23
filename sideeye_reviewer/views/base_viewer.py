@@ -35,9 +35,8 @@ class BaseReviewerView:
         self.subtitle: plt.Text = None  # used to store the subtitle text object for updating
         self.warning_text: plt.Text = None  # used to store the warning text object for updating without continually creating new text objects
         self.summary_text: plt.Text = None  # used to store the summary text object for updating without continually creating new text objects
-        # Buttons stored here
-        # self.stop_button = None
-        self.exit_button = None
+        # Buttons stored here - need to keep a reference to them for callback persistence regardless if they're ever used directly
+        self.exit_button = None # formerly `self.stop_button`
         self.undo_button = None
 
     def setup_gui(
@@ -55,7 +54,6 @@ class BaseReviewerView:
         self.images_per_fig = self.controller.images_per_fig
         labels = self.controller.get_category_labels() if use_checkboxes else None
         self.use_summary = use_summary
-        #self.fig = plt.figure(clear=True, num=self.fig_title)
         self.generate_layout(
             num_axes = num_axes,
             num_buttons = num_buttons,
@@ -73,6 +71,7 @@ class BaseReviewerView:
 
     def generate_layout(self, num_axes: int = 1, num_buttons: int = 2, labels: List[str] = None, use_legend: bool = True, use_summary: bool = False, use_checkboxes: bool = False):
         """ Generate the layout for the figure, subplots, etc. """
+        assert num_axes > 0, "Number of image axes must be greater than 0"
         self.layout = FigureLayoutManager(
             num_images = num_axes,
             num_buttons = num_buttons,
@@ -90,29 +89,20 @@ class BaseReviewerView:
         """ Creates EXIT and UNDO buttons in the bottom region of the figure. Subclasses add more buttons in separate functions """
         #? NOTE: these are returned in reverse order so that the rightmost button is at index 0
         btn_axes = self.layout.get_button_axes()
-        exit_ax = btn_axes[0].axes
+        exit_ax = btn_axes[0].axes # formerly `stop_ax`
         undo_ax = btn_axes[1].axes
-        #stop_ax = btn_axes[0].axes
         self.buttons_assigned[:2] = [True, True]  # mark the last two button positions (since they're added right to left) as assigned
         # Positions: [left, bottom, width, height]
-        #subfig = self.layout.get_subfigure("bottom")
         self.undo_button = ReviewerButton.factory(
             undo_ax,
-            #fig = subfig,
             label = "UNDO",
             ax_pos = undo_ax.get_position().bounds,
             callback = self.controller.on_undo_clicked
         )
-        self.exit_button = ReviewerButton.factory(
-        # self.stop_button = ReviewerButton.factory(
-            # stop_ax,
+        self.exit_button = ReviewerButton.factory( # formerly `self.stop_button`
             exit_ax,
-            #fig = subfig,
-            # TODO: might want to change all uses of "STOP" to "EXIT" for consistency with the viewer
-            label = "STOP",
-            # ax_pos = stop_ax.get_position().bounds,
+            label = "EXIT", # formerly labeled "STOP"
             ax_pos = exit_ax.get_position().bounds,
-            #callback = self.controller.on_stop_clicked
             callback = self.controller.on_exit_clicked
         )
 
@@ -135,8 +125,6 @@ class BaseReviewerView:
             for label, color in legend_dict.items():
                 plt.plot([], [], color=color, label=label, linewidth=6, alpha=0.4)
             self.fig.legend(**legend_kwargs)
-            # subfig = self.layout.get_subfigure("bottom_left")
-            # subfig.legend(**legend_kwargs)
 
     def display_image(self, image, ax_idx=0):
         """ show or update an image on self.axs; adjust accordingly for multiple axes """
@@ -149,7 +137,6 @@ class BaseReviewerView:
             aspect_ratio = "auto" if self.images_per_fig > 1 else None
             img_obj = ax.imshow(image, aspect=aspect_ratio)
             self.canvas_images.append(img_obj)
-        #self.fig.canvas.draw()
         self.fig.canvas.draw_idle()  # Update without forcing new figures
 
     def update_title(self, text, subtitle = None):
@@ -195,14 +182,12 @@ class BaseReviewerView:
         def remove_text():
             try:
                 self.warning_text.set_visible(False)
-                #self.warning_text.remove()  # remove the text object from the figure
-                #self.fig.canvas.draw()
                 self.fig.canvas.draw_idle()  # Update without forcing new figures
             except ValueError:
                 pass
         # create a timer that will remove the text after `duration` milliseconds
         timer = self.fig.canvas.new_timer(interval=duration)
-        timer.add_callback([remove_text])
+        timer.add_callback(remove_text)
         timer.start()
 
     def main_loop(self):
@@ -215,7 +200,6 @@ class BaseReviewerView:
         except KeyboardInterrupt:
             # if the user interrupts the loop, we can handle it here
             print("[VIEWER] Keyboard interrupt detected. Stopping review...")
-            #self.request_stop()
         # once we break from the loop, close the figure if it still exists
         self.request_stop()
 

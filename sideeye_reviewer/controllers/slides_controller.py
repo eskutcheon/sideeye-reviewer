@@ -1,4 +1,3 @@
-from typing import Optional, List, Union
 # local imports
 from ..types import ViewerLike, DataManagerType
 from .base_controller import BaseReviewController

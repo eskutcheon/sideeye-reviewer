@@ -20,10 +20,9 @@ class MultiLabelReviewerView(BaseReviewerView):
         controller: ControllerLike,
         labels: List[str],
         num_axes: int = 1,
-        #! TEMP: setting to true unconditionally until it's integrated into the controller
+        #! TEMP: setting to true by default until it's integrated into the controller
         use_summary: bool = True,
     ):
-        #super().setup_gui(controller, num_axes)
         self.use_summary = use_summary
         use_legend = bool(self.legend_dict)
         n_btn = 3  # 3 for the base buttons (EXIT, UNDO) and NEXT for "NEXT" for this subclass
@@ -46,9 +45,6 @@ class MultiLabelReviewerView(BaseReviewerView):
         # TODO: might refactor to retrieve AxesData object instead of the axes directly - reference bounds this way
             #? NOTE: label_props are kwargs for plt.Text - https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text
         ax_checkboxes: plt.Axes = self.layout.get_axes("right", "checkboxes") #[0]
-        print("ax_checkboxes: ", ax_checkboxes)
-        #ax_checkboxes = ax_checkboxes.axes
-        print("ax_checkboxes position: ", ax_checkboxes.get_position().bounds)
         # Define properties for labels and checkboxes
         # TODO: need to add logic to autofit the checkbox width and optimize the label fontsize
             # or find a way to use "wrap" for the checkbox's label text properties
@@ -64,7 +60,7 @@ class MultiLabelReviewerView(BaseReviewerView):
                        'facecolor': 'white'}
         self.checkboxes = CheckButtons(ax=ax_checkboxes, labels=labels, label_props=label_props, check_props=check_props, frame_props=frame_props)
         self.checkboxes.ax.set_title("Select all that apply.", fontsize="x-large")
-        print("checkbox dimensions after creation: ", self.checkboxes.ax.get_position().bounds)
+        #print("checkbox dimensions after creation: ", self.checkboxes.ax.get_position().bounds)
 
 
     def add_next_button(self):
@@ -73,10 +69,8 @@ class MultiLabelReviewerView(BaseReviewerView):
         button_axes_data = self.layout.get_button_axes()
         # set to first available button position
         button_ax = button_axes_data[-1].axes
-        #subfig = self.layout.get_subfigure("bottom")
         # FIXME: need to fix the position back into something relevant to the enclosing panel
         self.next_button = ReviewerButton.factory(
-            #fig=subfig,
             button_ax,
             label="NEXT",
             ax_pos=button_ax.get_position().bounds,

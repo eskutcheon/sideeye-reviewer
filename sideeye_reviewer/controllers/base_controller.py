@@ -16,7 +16,7 @@ class BaseReviewController:
             :param data_manager: DataManager instance
             :param view:   either a reviewer-type view or a results viewer-type view
         """
-        # TODO: should be giving this a more general data manager object of some sort
+        # TODO: in the future, this will be a more general data manager object than the current one that only does sorting through the bin manager
         self.data_manager = data_manager
         # retrieve whether to use a summary box from the data manager
         self.use_summary = self.data_manager.summary_type is not None
@@ -33,10 +33,8 @@ class BaseReviewController:
         self.file_list = self.data_manager.get_file_list(checkpoint)
         self.num_files = len(self.file_list)
         self.current_idx = 0
-        # labels = self.get_category_labels()
 
     def get_category_labels(self):
-        # TODO: should probably be careful with this kind of indirect access and return a copy
         return self.data_manager.labels
 
     def _load_image(self, idx: int):

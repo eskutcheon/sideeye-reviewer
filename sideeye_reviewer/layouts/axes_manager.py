@@ -25,7 +25,6 @@ class AxesCreationManager:
         It's meant to be a class member of FigureLayoutManager which calls to it to create and adjust axes
     """
     def __init__(self, used_axes_dict: Dict[str, bool]):
-        #self.fig_defaults = ConstFigureDefaults()
         # if I don't use this somewhere, there's no need to add a constructor
         self.used_axes_dict = used_axes_dict
 
@@ -47,16 +46,11 @@ class AxesCreationManager:
         for ax in img_axes[:num_images]:
             ax.set_aspect("auto", adjustable="box")
             img_axes_data.append(ImageAxesData(ax))
-            #& move this call back to the layout manager to register the axes in the panel
-            #self.figure_wrapper.add_axes_data_to_panel("main", axes_data)
-            # could easily just use `panel_data.add_axes_data(ImageAxesData(ax))` instead
-        #subfig.set_layout_engine("tight")
         # hide any unused image axes
         for ax in img_axes[num_images:]:
             ax.set_visible(False)
         return img_axes_data
 
-    #& previously PaneledFigureWrapper.create_button_axes()
     # TODO: add the actual axes creation later via self.set_axes_object() called from the layout manager
     def create_button_axes_data(self,
                                 num_buttons: int,
@@ -92,7 +86,7 @@ class AxesCreationManager:
 
     def create_checkbox_axes_data(self, **kwargs) -> CheckboxAxesData:
         """ Return a single CheckboxAxesData object - may later include the dynamic resizing of the axes based on labels """
-        # TODO: need to ensure that kwargs are properly passed from the layout manager - they're currently unhandled
+        # TODO: need to ensure that kwargs are properly passed from the layout manager - needs validation
         # Possibly compute bounding box from label count, etc.
         checkbox_axes =  CheckboxAxesData(**kwargs)
         # TODO: move this logic later - just removing it from _set_multiple_axes_objects for now
@@ -121,7 +115,6 @@ class AxesCreationManager:
 
 
     #? NOTE: essentially the exact same logic as PaneledFigureWrapper.create_single_axes - could call this instead
-    #& previously PaneledFigureWrapper.create_single_axes()
     def set_axes_object(self, panel_data: PanelData, axes_data: AxesData, **axes_init_kwargs):
         """ creates axes in the given panel of the figure using the provided AxesData """
         subfig = self._get_initialized_subfig(panel_data)
@@ -132,7 +125,6 @@ class AxesCreationManager:
         # initialize the axes with the data from the AxesData object
         axes_data.initialize_axes(ax)
 
-    #& previously PaneledFigureWrapper.create_subplot_axes()
     def _get_axes_subplots(self,
                           subfig: plt.Figure,
                           #axes_data: List[AxesData],
@@ -144,20 +136,6 @@ class AxesCreationManager:
         ax: Union[plt.Axes, List[plt.Axes]] = subfig.subplots(nrows=nrows, ncols=ncols, subplot_kw=axes_init_kwargs)
         # ensure list format before looping
         return get_axes_list(ax)
-        # initialize the axes with the data from the AxesData object
-        #!!! RETHINK THIS - won't work right with the button axes for instance
-        #! instead, maybe just call this in the AxesData creation functions for images and buttons
-        # for axes_obj, ax_data in zip(ax, axes_data):
-        #     ax_data.initialize_axes(ax)
-
-
-
-    # def create_button_axes(self, nrows=1, ncols=1, **subplot_kwargs) -> Union[plt.Axes, List[plt.Axes]]:
-    #     """ example helper that places a grid of Axes for buttons in the 'bottom' panel's subfigure """
-    #     # TODO: pass a list of AxesData objects to this function to create the buttons in the bottom panel
-    #     #? just testing this anchor value to see if it can right-align the buttons - remove if it gives any problems:
-    #     subplot_kwargs.setdefault("anchor", "E")  # set the anchor to the east (right) side of the subfigure
-    #     return self.create_subplot_axes("bottom", nrows=nrows, ncols=ncols, **subplot_kwargs)  # create a grid of Axes for buttons
 
 
     @staticmethod

@@ -76,11 +76,8 @@ class FigureLayoutManager:
         # following setter methods must be called before creating the figure and subfigures
         # any panels not present in the final figure should be set to "None" in self.figure_wrapper.panels
         self._set_bottom_panel()
-        #self._set_optional_panel("left", self._create_summary_axes)  # for summary box
         self._set_optional_panel("left", self.axes_manager.create_summary_axes_data)  # for summary box
-        #self._set_optional_panel("right", self._create_checkboxes)  # for checkboxes
         self._set_optional_panel("right", self.axes_manager.create_checkbox_axes_data)  # for checkboxes
-        #self._set_optional_panel("bottom_left")  # for future use
         self._set_optional_panel("bottom_left", self.axes_manager.create_legend_axes_data)  # for legend
         self._set_optional_panel("bottom_right")  # for future use - radial buttons that affect image contents
         self._set_main_panel()
@@ -100,7 +97,6 @@ class FigureLayoutManager:
         if self.num_buttons == 0:
             raise RuntimeError("Something went wrong; no buttons were created.")
         bottom_panel_defaults = self.panel_defaults.get_panel_defaults("bottom")
-        print("bottom panel defaults:", bottom_panel_defaults)
         bottom_panel = PanelData(name="bottom", **bottom_panel_defaults)
         self.figure_wrapper.add_panel("bottom", bottom_panel)
         buttons = self._create_and_register_button_axes()
@@ -131,7 +127,6 @@ class FigureLayoutManager:
             if add_axes_func:
                 # create the axes for the panel if a function is provided
                 axes_data = add_axes_func()
-                print(f"{name} panel axes width: {axes_data.width}")
                 self.figure_wrapper.add_axes_data_to_panel(name, axes_data)  # append an AxesData object to the panel
 
 
@@ -167,7 +162,6 @@ class FigureLayoutManager:
         if bottom_panel is None:
             raise ValueError("Bottom panel (mandatory) is not yet initialized.")
         button_axes_data = self.axes_manager.create_button_axes_data(
-            #bottom_panel,
             self.num_buttons,
             bottom_panel.left + self.panel_defaults.AXES_PADDING,
             bottom_panel.left + bottom_panel.width - self.panel_defaults.AXES_PADDING

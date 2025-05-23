@@ -19,7 +19,7 @@ class SingleLabelReviewerView(BaseReviewerView):
         controller: ControllerLike,
         labels: List[str],
         num_axes: int = 1,
-        #! TEMP: setting to true unconditionally until it's integrated into the controller
+        #! TEMP: setting to true by default until it's integrated into the controller
         use_summary: bool = True,
     ):
         self.use_summary = use_summary
@@ -33,7 +33,7 @@ class SingleLabelReviewerView(BaseReviewerView):
         self.fig.tight_layout()
         # create label-specific buttons
         self._create_label_buttons(labels)
-        # Optionally create the legend
+        # optionally create the legend
         self._create_legend(self.legend_dict)
         # initialize summary box with filler text
         # create summary box if using summary
@@ -46,7 +46,6 @@ class SingleLabelReviewerView(BaseReviewerView):
         button_axes_data = self.layout.get_button_axes()[::-1]
         button_axes: List[plt.Axes] = [ax_data.axes for ax_data in button_axes_data]
         num_btn = len(button_axes)
-        #subfig = self.layout.get_subfigure("bottom")
         # drop buttons that have already been assigned (primarily the EXIT and UNDO Buttons set by the base class)
             #? NOTE: this will probably be changed in the future when I update the slideshow viewer to inherit from the same base class
         available_axes = []
@@ -56,7 +55,6 @@ class SingleLabelReviewerView(BaseReviewerView):
                 self.buttons_assigned[num_btn - i - 1] = True  # mark this button as assigned
         for lbl, ax in zip(labels, available_axes):
             btn = ReviewerButton.factory(
-                #fig=subfig,
                 ax,
                 label=lbl.upper(),
                 ax_pos = ax.get_position().bounds,

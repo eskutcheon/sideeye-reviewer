@@ -63,7 +63,7 @@ class DataManager:
         self.transform_pipeline: List[TransformFn] = []
         #!!! DEBUGGING - for testing the summary box rendering - remove later
         self.temp_iter = 0
-        
+
 
     def _verify_num_folders(self):
         """ Check if the number of image folders is valid for the current setup. """
@@ -141,7 +141,6 @@ class DataManager:
             random.shuffle(all_files)
         return all_files
 
-    # TODO: rename to something more descriptive regarding the fact a single image is found in multiple folders
     def get_image_paths(self, img_name: str) -> List[str]:
         """ Return the full path(s) for the given filename in each directory """
         # TODO: add safeguards for missing folders or files

@@ -80,7 +80,6 @@ class PanelData:
     # list of AxesData to place in second phase of the layout creation
     axes_items: List[AxesData] = field(default_factory=list)
 
-    # TODO: determine whether I want to drop this - currently unused in favor of PaneledFigureLayout.add_axes_data_to_panel
     def add_axes_item(self, ax_data: Union[AxesData, List[AxesData]]):
         """ add one or more AxesData object to the panel """
         if not isinstance(ax_data, list):
@@ -115,7 +114,6 @@ class PanelData:
 
 
 
-#@dataclass
 class CheckboxAxesData(AxesData):
     """ for storing checkboxes axes info """
     DEFAULT_KWARGS = ConstAxesDefaults.get_checkbox_defaults()
@@ -128,11 +126,9 @@ class CheckboxAxesData(AxesData):
             height=height,
             **kwargs
         )
-        #print(f"CheckboxAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("checkboxes", left, bottom, width, height, **kwargs)
 
 
-#@dataclass
 class SummaryAxesData(AxesData):
     """ for storing summary box axes info """
     DEFAULT_KWARGS = ConstAxesDefaults.get_summary_defaults()
@@ -144,7 +140,6 @@ class SummaryAxesData(AxesData):
             height=height,
             **kwargs
         )
-        #print(f"SummaryAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("summary", left, bottom, width, height, **kwargs)
 
 class LegendAxesData(AxesData):
@@ -159,7 +154,6 @@ class LegendAxesData(AxesData):
             height=height,
             **kwargs
         )
-        #print(f"LegendAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("legend", left, bottom, width, height, **kwargs)
 
 
@@ -178,20 +172,17 @@ class ButtonAxesData(AxesData):
             height=height,
             **kwargs
         )
-        #print(f"ButtonAxesData kwargs: left={left}, bottom={bottom}, width={width}, height={height}, {kwargs}")
         super().__init__("buttons", left, bottom, width, height, **kwargs)
 
 
 #** may not use this anyway since the new panel layout creator is using subplots
 class ImageAxesData(AxesData):
     """ for storing image axes info """
-    # TODO: add non-positional default arguments for things like color, alpha, title, etc
     def __init__(self, ax: plt.Axes = None, **kwargs):
         if ax is None:
             raise ValueError("ImageAxesData must be instantiated with an existing plt.Axes object")
         pos = ax.get_position().bounds
         kwargs.update({"left": pos[0], "bottom": pos[1], "width": pos[2], "height": pos[3]})
-        #print(f"ImageAxesData kwargs: {kwargs}")
         super().__init__("image", **kwargs)
         self.initialize_axes(ax)  # set the facecolor and alpha for the axes
 

@@ -1,4 +1,3 @@
-# contention_review_driver.py
 
 import os
 import sys
