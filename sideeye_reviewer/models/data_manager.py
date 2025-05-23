@@ -136,7 +136,7 @@ class DataManager:
         all_files = self.file_list if self.file_list else os.listdir(self.image_folders[0])
         ckpt_idx = self.check_if_resuming(len(all_files), checkpoint)
         if ckpt_idx:
-            all_files = all_files[checkpoint:]
+            all_files = all_files[ckpt_idx:]
         if self.shuffle:
             random.shuffle(all_files)
         return all_files
@@ -160,9 +160,8 @@ class DataManager:
             # may want to do checkpointing for more than just the sorting task
         if self.sorter:
             files_checked = self.sorter.get_num_sorted()
-            if files_checked == 0:
-                return None
-            return files_checked
+            if files_checked != 0:
+                return files_checked
         return None
 
     def generate_summary_text(self) -> str:
