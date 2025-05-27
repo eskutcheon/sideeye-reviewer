@@ -8,6 +8,35 @@ import matplotlib.pyplot as plt
 TransformFn = Callable[[Any], Any]
 
 
+
+class TaskOrchestrator:
+    """
+        - This class will be responsible for orchestrating whatever the controller's secondary task
+            (e.g. sorting) is and communicates with the data manager to update task models or to
+            transform the images in some way (e.g. mask overlays or augmentations) before loading.
+    
+        - I think it should first and foremost be a wrapper for things like the bin manager but written in an
+            abstract way so that it can be used for other tasks in the future.
+        
+        - Since it would do both data transforms and model updates, it should probably still be organized for
+            two-way communication with the data manager.
+        
+        - It should also be able to handle the case where the user wants to do something like
+            generate a new image or plot on the fly (e.g. edge detection, histograms, etc.)
+            and store them in a cache.
+
+        - I might need 2 general patterns for this:
+            1) a task model that operates on the images BEFORE loading (e.g. edge detection, mask overlays, heatmaps, etc.)
+            2) a task model that operates on the images AFTER loading based on user input passed back from the controller (e.g. sorting, augmentations, etc.)
+                - in the second case, the view would need to be refreshed without moving to the next image
+                - need to figure out a solid way to refresh the view anyway if I'm adding the radial buttons to toggle the information to load
+            - maybe make base classes `LoaderModel` and `UpdaterModel` that can be extended for specific tasks?
+    
+    """
+
+
+
+
 class DataManager:
     """
         Manages:

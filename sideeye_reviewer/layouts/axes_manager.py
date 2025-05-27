@@ -154,8 +154,9 @@ class AxesCreationManager:
         # rescale if total width exceeds available space
             # eventually, might want to allocate enough vertical space (more than the default 0.15) to have extra button rows
         if total_width > right_bound - left_bound:
-            scale = (right_bound - left_bound)/total_width
+            scale = (right_bound - left_bound)/total_width # guaranteed to be < 1 by definition
             width *= scale
+            # TODO: determine a good way to scale the height since it should be a separate condition based on total height
             spacing *= scale
             total_width = get_total_width(width, spacing)
         padding = (right_bound - left_bound - total_width)/2
