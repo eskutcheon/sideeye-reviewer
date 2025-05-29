@@ -45,6 +45,16 @@ class SessionManager:
             "entries": [asdict(e) for e in self._entries]
         }, out.open("w"), indent=2)
 
+    def get_last_index(self) -> int:
+        """ returns an index one greater than the last entry in the session log """
+        last_idx = 0
+        for e in self._entries:
+            if e.action == "label":
+                last_idx += 1
+            elif e.action == "undo":
+                last_idx -= 1
+        return max(0, last_idx)
+
 
     @staticmethod
     def resume_session(session_file: str) -> 'SessionManager':

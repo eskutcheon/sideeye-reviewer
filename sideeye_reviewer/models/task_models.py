@@ -7,10 +7,9 @@ from typing import List, Dict, Any
 
 
 
-# !!! UNFINISHED !!!
+
 class TaskModel(ABC):
     """ A plug-in that handles and utilizes user outcomes (sorting, scoring, …) """
-
     @abstractmethod
     def update(self, item_id: str, user_choice: Any) -> None: ...
 
@@ -66,7 +65,6 @@ class TaskOrchestrator:
         for m in self._models:
             m.flush()
 
-    # TODO: maybe consider adding a method to do stuff like retrieve all category labels from all models then take their union
     def get_category_labels(self) -> List[str]:
         """ returns the union of all category labels from all task models """
         labels = set()

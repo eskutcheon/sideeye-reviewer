@@ -29,17 +29,14 @@ class BaseReviewController:
         # TODO: images per batch should soon be determined by session configuration and no longer handled by the data manager
         #! TEMPORARY HARDCODE - REMOVE LATER:
         self.images_per_fig = 2 #self.data_manager.images_per_batch
-        # self.file_list: List[str] = []
-        # self.num_files = 0
-        # self.current_idx: int = 0
         self._stop_requested = False
 
     def initialize(self, checkpoint: Union[bool, int] = True):
         """ called in subclasses to set up the file list from the sorter, then call the view setup """
         # get the list of files (possibly sliced by the checkpoint if given)
-        self.file_list = self.data_manager.get_file_list(checkpoint)
-        self.num_files = len(self.file_list)
-        #self.current_idx = 0
+        # self.file_list = self.data_manager.get_file_list(checkpoint) #! DEPRECATED - no longer takes a checkpoint - in the process of rewriting this now
+        # self.num_files = len(self.file_list)
+        raise NotImplementedError("Subclasses should implement the initialize method to set up the view and load the first item.")
 
     def get_category_labels(self):
         try:
@@ -48,35 +45,6 @@ class BaseReviewController:
             print("[CONTROLLER] No task models found or no labels available.")
             #! FIXCHANGE - don't intend to keep it this way, but I need to debug it all first
             return []
-
-    # def _load_image(self, idx: int):
-    #     """ common method to load the file at 'idx' from disk via the sorter and pass it to the view for display """
-    #     if not self.file_list or idx >= len(self.file_list):
-    #         return
-    #     filename = self.file_list[idx]
-    #     # get a list of full paths for the current filename under all available image folders in the manager
-    #     # FIXME: will be moving this logic to the data manager later
-    #     # TODO: rewrite this to use iterators like the new data manager intended - mostly through `next` and `prev` to step backward or forward
-    #     #imgs = self.data_manager.load_images(filename)
-    #     load_results = self.data_manager.next()
-    #     #         paths = self.get_image_paths(filename)
-    #     #         images = []
-    #     #         for p in paths:
-    #     #             img = plt.imread(p)
-    #     #             # for fn in self.transform_pipeline:
-    #     #             #     img = fn(img)
-    #     #             images.append(img)
-    #     #         return images
-    #     for i, img in enumerate(imgs):
-    #         self.view.display_image(img, ax_idx=i)
-    #     # if view has a title or progress info:
-    #     print_idx = self.num_files + idx + 1 if idx < 0 else idx + 1
-    #     self.view.update_title(f"{self.view.fig_title}", f"{filename}\nProgress: {print_idx}/{len(self.file_list)}")
-    #     # TODO: add logic to retrieve data for the summary box if applicable - using_summary should now be passed to the viewer constructor
-    #     # self.view.update_summary(...)
-    #     if self.use_summary:
-    #         summary_text = self.data_manager.generate_summary_text()
-    #         self.view.update_summary(summary_text)
 
 
     def on_window_closed(self):

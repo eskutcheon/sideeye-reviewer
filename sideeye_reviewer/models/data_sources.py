@@ -67,6 +67,8 @@ class MultiFolderSource(DataSource):
         common_ids: Optional[Set[str]] = None
         for root in self.roots:
             names = self._collect_names(root)
+            # TODO: add a mechanism that will collect all names with common prefixes rather than exact matches
+                # this includes within the same root folder
             common_ids = names if common_ids is None else common_ids.intersection(names)
             if not common_ids:
                 break
@@ -74,25 +76,17 @@ class MultiFolderSource(DataSource):
 
     def enumerate(self) -> Iterable[str]:
         """ Yield identifiers (relative paths) for items present in ALL root folders """
-        #common_ids: List[str] = self._compute_common_ids()
         yield from self._common_ids
-        # for pattern in self.patterns:
-        #     yield from sorted([str(p.relative_to(root)) for p in root.rglob(pattern)])
 
     def load(self, item_id: str) -> bytes:
         """ Load raw bytes for a single item identifier from the first root where it exists, caching it """
         if item_id not in self._cache:
             for root in self.roots:
                 path = root / item_id
-                # if path.exists():
-                #     self._cache[item_id] = path.read_bytes()
-                #     break
                 if not path.exists():
                     #! FIXCHANGE: may not want to raise an error in the future - just debugging for now
                     raise FileNotFoundError(f"{item_id} missing in {root}")
                 self._cache[item_id].append(path.read_bytes())
-            # else:
-            #     raise FileNotFoundError(f"Item '{item_id}' not found in any of the specified roots.")
         return self._cache[item_id]
 
     # legacy helper function kept for compatibility with existing code
