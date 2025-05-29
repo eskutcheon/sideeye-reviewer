@@ -53,6 +53,7 @@ class BaseReviewerView:
         self.controller = controller
         self.images_per_fig = self.controller.images_per_fig
         labels = self.controller.get_category_labels() if use_checkboxes else None
+        # TODO: replace these boolean flags with a single config object encapsulating all flags and other layout-related settings
         self.use_summary = use_summary
         self.generate_layout(
             num_axes = num_axes,

@@ -23,16 +23,56 @@ CLASS_LABELS  = {'clean':'black','transparent':'green','semi-transparent':'blue'
 #     reviewer.begin_review()
 
 
-def begin_review_v2(image_folders, output_dir, file_list, num_axes=2):
-    from sideeye_reviewer.models.data_manager import DataManager
-    from sideeye_reviewer.controllers.review_controller import ReviewerController
-    from sideeye_reviewer.views.multilabel_reviewer import MultiLabelReviewerView
-    image_folders = image_folders[:num_axes]
-    json_name = f"multilabel_sort_{num_axes}img_v2.json"
-    manager = DataManager(image_folders, output_dir, SORTER_LABELS, file_list, json_name=json_name, enable_sorting=True) #, summary_type="something")
+# def begin_review_v2(image_folders, output_dir, file_list, num_axes=2):
+#     from sideeye_reviewer.models.data_manager import DataManager
+#     from sideeye_reviewer.controllers.review_controller import ReviewerController
+#     from sideeye_reviewer.views.multilabel_reviewer import MultiLabelReviewerView
+#     image_folders = image_folders[:num_axes]
+#     json_name = f"multilabel_sort_{num_axes}img_v2.json"
+#     manager = DataManager(image_folders, output_dir, SORTER_LABELS, file_list, json_name=json_name, enable_sorting=True) #, summary_type="something")
+#     reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
+#     controller = ReviewerController(manager, reviewer)
+#     controller.initialize()
+
+from sideeye_reviewer.models.data_manager import DataManager, img_decode_rgb_list
+from sideeye_reviewer.controllers.review_controller import ReviewerController
+from sideeye_reviewer.views.multilabel_reviewer import MultiLabelReviewerView
+from sideeye_reviewer.models.etl_models import PreLoaderModel
+from sideeye_reviewer.models.data_sources import MultiFolderSource
+from sideeye_reviewer.models.task_models import BinSortingTask
+from sideeye_reviewer.models.session_manager import SessionManager
+
+
+def begin_review_v3(image_folders, output_dir, file_list, num_axes=2):
+    data_source = MultiFolderSource(image_folders)
+    pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
+    sorter_model = BinSortingTask(
+        labels=SORTER_LABELS,
+        out_dir=output_dir,
+        outfile=f"multilabel_sort_{num_axes}img_v3.json", #& UPDATE outfile_name -> outfile
+    )
+    data_manager = DataManager(pre_loader=pre_loader, task_models=sorter_model)
     reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
-    controller = ReviewerController(manager, reviewer)
+    controller = ReviewerController(data_manager, reviewer)
     controller.initialize()
+    #json_name=f"multilabel_sort_{num_axes}img_v3.json")
+
+
+def begin_review_v3_from_session(image_folders, output_dir, file_list, num_axes=2):
+    data_source = MultiFolderSource(image_folders)
+    pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
+    sorter_model = BinSortingTask(
+        labels=SORTER_LABELS,
+        out_dir=output_dir,
+        outfile=f"multilabel_sort_{num_axes}img_v3.json", #& UPDATE outfile_name -> outfile
+    )
+    resumed_session = SessionManager.resume_session(r"sessions/session_8c273b99.json")
+    data_manager = DataManager(pre_loader=pre_loader, task_models=sorter_model, session_mgr=resumed_session)
+    reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
+    controller = ReviewerController(data_manager, reviewer)
+    controller.initialize()
+
+
 
 
 
@@ -43,4 +83,6 @@ if __name__ == "__main__":
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'results', 'disputed_labels')
     # folders passed to the ImageSorter constructor must be in a list, even if singleton
     #begin_review_v1([image_train_folder, label_train_folder], output_dir, None, "multilabel_output.json") # train review
-    begin_review_v2([image_train_folder, label_train_folder], output_dir, file_list=None, num_axes=2)
+    #begin_review_v2([image_train_folder, label_train_folder], output_dir, file_list=None, num_axes=2)
+    #begin_review_v3([image_train_folder, label_train_folder], output_dir, file_list=None, num_axes=2)
+    begin_review_v3_from_session([image_train_folder, label_train_folder], output_dir, file_list=None, num_axes=2)

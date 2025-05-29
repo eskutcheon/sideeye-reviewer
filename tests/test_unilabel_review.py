@@ -31,6 +31,28 @@ def test_review_v2(image_folders, output_dir, num_axes=2):
     controller.initialize()
 
 
+def test_review_v3(image_folders, output_dir, num_axes=2):
+    from sideeye_reviewer.models.data_manager import DataManager, img_decode_rgb_list
+    from sideeye_reviewer.models.data_sources import MultiFolderSource
+    from sideeye_reviewer.models.etl_models import PreLoaderModel
+    from sideeye_reviewer.models.task_models import BinSortingTask
+    from sideeye_reviewer.controllers.review_controller import ReviewerController
+    from sideeye_reviewer.views.unilabel_reviewer import SingleLabelReviewerView
+    # TODO: test with sinlge folder source `FolderSource` as well
+    data_source = MultiFolderSource(image_folders)
+    pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
+    sorter_model = BinSortingTask(
+        labels=SORTER_LABELS,
+        out_dir=output_dir,
+        outfile=f"test_unilabel_sort_{num_axes}img_v3.json", #& UPDATE outfile_name -> outfile
+    )
+    data_manager = DataManager(pre_loader=pre_loader, task_models=sorter_model)
+    reviewer = SingleLabelReviewerView(legend_dict=LEGEND_LABELS)
+    controller = ReviewerController(data_manager, reviewer)
+    controller.initialize()
+
+
+
 if __name__ == "__main__":
     root_data_dir = r"E:\Woodscape Soiling\soiling_dataset"
     image_train_folder = os.path.join(root_data_dir, 'train', 'rgbImages')
@@ -38,4 +60,5 @@ if __name__ == "__main__":
     output_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'results', 'disputed_labels')
     # folders passed to the ImageSorter constructor must be in a list, even if singleton
     #test_review_v1([image_train_folder, label_train_folder], output_dir) # training set review
-    test_review_v2([image_train_folder, label_train_folder], output_dir, num_axes=2) # training set review
+    #test_review_v2([image_train_folder, label_train_folder], output_dir, num_axes=2) # training set review
+    test_review_v3([image_train_folder, label_train_folder], output_dir, num_axes=2) # training set review

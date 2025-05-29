@@ -10,23 +10,35 @@ class SlideshowController(BaseReviewController):
         self.playing_animation = False
 
     def initialize(self, checkpoint = True):
-        super().initialize(checkpoint)
-        self.view.setup_gui(self, num_axes = self.data_manager.images_per_batch)
-        if self.file_list:
-            self._load_image(0)
+        # super().initialize(checkpoint) #& UPDATE: new data manager setup doesn't use the superclass method anymore
+        #! FIXME (HARDCODING): the number of images to display needs to handled differently from now on
+        self.view.setup_gui(self, num_axes = self.images_per_fig) #self.data_manager.images_per_batch)
+        # if self.file_list:
+        #     self._load_image(0)
+        first = self.data_manager.next()
+        if first:
+            self._render(first)
         self.view.main_loop()
 
     def on_prev_clicked(self, event=None):
         """ returns to previous image """
-        if len(self.file_list) > 0:
-            self.current_idx = (self.current_idx - 1) % len(self.file_list)
-            self._load_image(self.current_idx)
+        # if len(self.file_list) > 0:
+        #     self.current_idx = (self.current_idx - 1) % len(self.file_list)
+        #     self._load_image(self.current_idx)
+        # TODO: ensure the circular navigation works correctly with the new data manager setup
+        lr = self.data_manager.prev()
+        if lr:
+            self._render(lr)
 
     def on_next_clicked(self, event=None):
         """ skips to next image """
-        if len(self.file_list) > 0:
-            self.current_idx = (self.current_idx + 1) % len(self.file_list)
-            self._load_image(self.current_idx)
+        # if len(self.file_list) > 0:
+        #     self.current_idx = (self.current_idx + 1) % len(self.file_list)
+        #     self._load_image(self.current_idx)
+        # TODO: ensure the circular navigation works correctly with the new data manager setup
+        lr = self.data_manager.next()
+        if lr:
+            self._render(lr)
 
     def on_start_clicked(self, event=None):
         """ start auto-play for slideshow """
@@ -42,6 +54,8 @@ class SlideshowController(BaseReviewController):
 
     def on_exit_clicked(self, event=None):
         """ exit viewer and close the window """
-        self._stop_requested = True
-        if hasattr(self.view, "request_stop"):
-            self.view.request_stop()
+        # self._stop_requested = True
+        # if hasattr(self.view, "request_stop"):
+        #     self.view.request_stop()
+        #& UPDATE: using new data manager where `close_requested` calls all task models to write their results and perform cleanup
+        self.close_requested()
