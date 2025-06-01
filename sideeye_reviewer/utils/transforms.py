@@ -14,7 +14,7 @@ import skimage.feature as skfe
 
 # may move some of these more universal image processing functions to utils.py
 
-def ensure_normalized_img(img: np.ndarray) -> np.ndarray:
+def _ensure_normalized_img(img: np.ndarray) -> np.ndarray:
     """ Ensures the image is in the range [0, 1] and of type float32
         :param img: image to normalize
         :return: normalized image
@@ -26,7 +26,7 @@ def ensure_normalized_img(img: np.ndarray) -> np.ndarray:
             img = img.astype(np.float32)
     return img
 
-def ensure_full_color_img(img: np.ndarray) -> np.ndarray:
+def _ensure_full_color_img(img: np.ndarray) -> np.ndarray:
     """ ensures the image has 3 channels (RGB), handling grayscale of shape (H, W) or (H, W, 1)
         :param img: image to ensure full color
         :return: image with 3 channels
@@ -96,7 +96,7 @@ def create_segmentation_mask_overlay(
 
 
 
-def rgb_to_grayscale(img: np.ndarray):
+def _rgb_to_grayscale(img: np.ndarray):
     """ Converts an RGB image to grayscale using the luminosity method
         :param img: input RGB image as a numpy array
         :return: grayscale image as a numpy array
@@ -206,7 +206,7 @@ def create_bbox_overlay_pil(
     if not isinstance(box_colors, np.ndarray):
         box_colors = np.array(box_colors)
     # ensure the colors are all also normalized to [0, 1] range
-    box_colors = ensure_normalized_img(box_colors)
+    box_colors = _ensure_normalized_img(box_colors)
     MIN_HEIGHT = 10
     MIN_WIDTH = 10
     H, W = img.shape[:2]
@@ -223,8 +223,8 @@ def create_bbox_overlay_pil(
     # ensure image is float32 for calculations (will convert back at the end)
     img_dtype = img.dtype
     working_img = img.copy()
-    working_img = ensure_normalized_img(working_img)
-    working_img = ensure_full_color_img(working_img)
+    working_img = _ensure_normalized_img(working_img)
+    working_img = _ensure_full_color_img(working_img)
     # draw each bbox
     for i, (bbox, color) in enumerate(zip(bboxes, box_colors)):
         x1, y1, x2, y2 = _clamp_bbox(bbox, (H, W))
@@ -337,7 +337,7 @@ def create_binary_edge_mask(
     img_copy = img.copy()
     img_shape_init = img.shape
     if img.ndim == 3 and img.shape[2] == 3:
-        img_copy = rgb_to_grayscale(img_copy)  # convert to grayscale if RGB
+        img_copy = _rgb_to_grayscale(img_copy)  # convert to grayscale if RGB
     if max(img_shape_init) > MAX_IMG_SIZE_FOR_EDGE_DETECTION:
         # downscale the image if it's too large
         scale_factor = MAX_IMG_SIZE_FOR_EDGE_DETECTION / max(img_copy.shape)
@@ -398,7 +398,6 @@ def create_morphological_gradient_mask(
         Returns:
             (np.ndarray) 3-channel gradient mask (concatenated dilation - erosion across each channel)
     """
-    
     if img.ndim == 2:
         img = np.expand_dims(img, axis=-1)  # ensure img is 3-channel
     mask = np.zeros_like(img, dtype=np.float32)
@@ -462,7 +461,7 @@ def create_rgb_distributions(
         """ callable to return to the dispatcher which populates the axes with the histogram """
         assert img.ndim == 3 and img.shape[2] == 3, "Image must be RGB with shape (H, W, 3)"
         # ensure the image is normalized to [0, 1]
-        img = ensure_normalized_img(img)
+        img = _ensure_normalized_img(img)
         # compute histograms for each channel
         histogram = np.array([
             np.histogram(img[..., i], bins=bins, range=data_range)[0] for i in range(3)

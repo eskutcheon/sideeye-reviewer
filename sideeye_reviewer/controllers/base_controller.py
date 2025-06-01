@@ -63,8 +63,10 @@ class BaseReviewController:
 
     def _render(self, lr: LoadResult):
         """ draw all assets in the load results onto the view """
+        print("[DEBUGGING] CHECKING IF `assets` IS EMPTY: ", lr.assets)
         for asset in lr.assets: # iterate over RenderAsset objects
             if asset.kind == "image" and hasattr(self.view, "display_image"):
+                print("[DEBUGGING] asset.payload: ", asset.payload)
                 self.view.display_image(asset.payload, ax_idx=asset.target_axes)
             elif asset.kind == "plot" and hasattr(self.view, "display_plot"):
                 #! FIXME: not yet implemented - may need to be reassessed entirely since I'll still need to either
@@ -72,6 +74,11 @@ class BaseReviewController:
                     # 2. adopt a builder pattern that sets up all steps to perform as a callable to be applied
                         # in the controller or data manager after retrieving the axes
                 self.view.display_plot(asset.payload, ax_idx=asset.target_axes)
+            elif asset.kind == "callable":
+                pass
+            else:
+                print("[DEBUGGING] Checking asset kind: ", asset.kind)
+                print("[DEBUGGING] Asset payload: ", asset.payload)
         # titles / summary
         progress = f"{int(self.data_manager.current_idx) + 1}/{self.data_manager.total}"
         if hasattr(self.view, "update_title"):

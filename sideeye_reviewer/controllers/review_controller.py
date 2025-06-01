@@ -17,6 +17,8 @@ class ReviewerController(BaseReviewController):
         self.view.setup_gui(self, labels, num_axes = self.images_per_fig, use_summary=self.use_summary)
         # intialize the view with the first image
         first = self.data_manager.next()
+        print(f"first type: {type(first)}")
+        print(f"[CONTROLLER] Initializing reviewer with first item: {first}")
         if first:
             self._render(first)
         self.view.main_loop()
@@ -55,6 +57,7 @@ class ReviewerController(BaseReviewController):
                 self.view.display_warning("Please select at least one checkbox before clicking 'NEXT'.")
                 return
             self.data_manager.assign_label(chosen_labels)  #& UPDATE: using new data manager setup
+        # !!!! FIXME: empty assets bug traced back here - fix later
         lr = self.data_manager.next()
         if lr is None:
             self.close_requested()

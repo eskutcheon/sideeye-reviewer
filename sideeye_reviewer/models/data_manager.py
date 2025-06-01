@@ -15,28 +15,28 @@ def summary_transform(*, item_id: str, raw: bytes, ctx: dict, **_) -> None:
 
 # -- raw‑bytes‑>RGB ndarray transform ---------------------------------------
 
-# TODO: move file buffer reading functions to another file and simplify them for different input formats
-    # may end up implementing concrete transforms subclasses and this could be one of them
+# # TODO: move file buffer reading functions to another file and simplify them for different input formats
+#     # may end up implementing concrete transforms subclasses and this could be one of them
 
-def read_bytes_as_rgb(*, item_id: str, raw: bytes, ctx: dict, idx: int) -> np.ndarray:
-    import io, PIL.Image as PIL
-    return np.array(PIL.open(io.BytesIO(raw)).convert("RGB"))
+# def read_bytes_as_rgb(*, item_id: str, raw: bytes, ctx: dict, idx: int) -> np.ndarray:
+#     import io, PIL.Image as PIL
+#     return np.array(PIL.open(io.BytesIO(raw)).convert("RGB"))
 
-def img_decode_rgb(*, item_id: str, raw: bytes, ctx: dict, **_) -> RenderAsset:
-    img = read_bytes_as_rgb(item_id=item_id, raw=raw, ctx=ctx, idx=0)
-    return RenderAsset("image", img, target_axes=0)
+# def img_decode_rgb(*, item_id: str, raw: bytes, ctx: dict, **_) -> RenderAsset:
+#     img = read_bytes_as_rgb(item_id=item_id, raw=raw, ctx=ctx, idx=0)
+#     return RenderAsset("image", img, target_axes=0)
 
-def img_decode_rgb_list(*, item_id: str, raw: Union[bytes, List[bytes]], ctx: dict, **_) -> List[RenderAsset]:
-    if isinstance(raw, bytes):
-        # if raw is a single bytes object, decode it as a single image
-        return [img_decode_rgb(item_id=item_id, raw=raw, ctx=ctx)]
-    else:
-        # if raw is a list of bytes objects, decode each as an image
-        assets = []
-        for i, buf in enumerate(raw):
-            img = read_bytes_as_rgb(item_id=item_id, raw=buf, ctx=ctx, idx=i)
-            assets.append(RenderAsset(kind="image", payload=img, target_axes=i))
-        return assets
+# def img_decode_rgb_list(*, item_id: str, raw: Union[bytes, List[bytes]], ctx: dict, **_) -> List[RenderAsset]:
+#     if isinstance(raw, bytes):
+#         # if raw is a single bytes object, decode it as a single image
+#         return [img_decode_rgb(item_id=item_id, raw=raw, ctx=ctx)]
+#     else:
+#         # if raw is a list of bytes objects, decode each as an image
+#         assets = []
+#         for i, buf in enumerate(raw):
+#             img = read_bytes_as_rgb(item_id=item_id, raw=buf, ctx=ctx, idx=i)
+#             assets.append(RenderAsset(kind="image", payload=img, target_axes=i))
+#         return assets
 
 
 # TODO: add factory methods to set up the pre-loader, post-loader, and task models
@@ -80,7 +80,9 @@ class DataManager:
     def get_current(self) -> LoadResult:
         item_id = self._ids[self._idx]
         if item_id not in self._cache:
+            print(f"[DEBUG] Loading item {item_id} into cache...")
             lr = self.pre_loader.load(item_id)
+            print("load result: ", lr)
             self._insert_cache(lr)
         return self._cache[item_id]
 

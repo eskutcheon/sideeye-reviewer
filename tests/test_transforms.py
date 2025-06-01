@@ -13,7 +13,7 @@ from sideeye_reviewer.utils.transforms import (
     create_binary_edge_mask,
     create_morphological_gradient_mask,
     _compute_adaptive_threshold,
-    rgb_to_grayscale,
+    _rgb_to_grayscale,
     create_ssim_heatmap,
     create_rgb_distributions
 )
@@ -71,7 +71,7 @@ def _test_create_bbox_overlay(img):
 
 def _test_thresholding_methods(img):
     if img.ndim == 3 and img.shape[2] == 3:
-        img = rgb_to_grayscale(img)  # convert to grayscale if RGB
+        img = _rgb_to_grayscale(img)  # convert to grayscale if RGB
         print("img_copy shape after conversion: ", img.shape)
     # test the general methods first:
     # fig, ax = filters.try_all_threshold(img, figsize=(10, 8), verbose=True)
