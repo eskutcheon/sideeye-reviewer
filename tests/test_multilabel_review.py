@@ -41,26 +41,26 @@ from sideeye_reviewer.models.etl_models import PreLoaderModel
 from sideeye_reviewer.models.data_sources import MultiFolderSource
 from sideeye_reviewer.models.task_models import BinSortingTask
 from sideeye_reviewer.models.session_manager import SessionManager
-from sideeye_reviewer.models.aug_wrappers import img_decode_rgb_list
+# from sideeye_reviewer.models.aug_wrappers import img_decode_rgb_list
 
 
-def begin_review_v3(image_folders, output_dir, file_list, num_axes=2):
-    data_source = MultiFolderSource(image_folders)
-    pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
-    sorter_model = BinSortingTask(
-        labels=SORTER_LABELS,
-        out_dir=output_dir,
-        outfile=f"multilabel_sort_{num_axes}img_v3.json",
-    )
-    data_manager = DataManager(pre_loader=pre_loader, task_models=sorter_model)
-    reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
-    controller = ReviewerController(data_manager, reviewer)
-    controller.initialize()
+# def begin_review_v3(image_folders, output_dir, file_list, num_axes=2):
+#     data_source = MultiFolderSource(image_folders)
+#     pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
+#     sorter_model = BinSortingTask(
+#         labels=SORTER_LABELS,
+#         out_dir=output_dir,
+#         outfile=f"multilabel_sort_{num_axes}img_v3.json",
+#     )
+#     data_manager = DataManager(pre_loader=pre_loader, task_models=sorter_model)
+#     reviewer = MultiLabelReviewerView(legend_dict=CLASS_LABELS)
+#     controller = ReviewerController(data_manager, reviewer)
+#     controller.initialize()
 
 
 def begin_review_v3_from_session(image_folders, output_dir, file_list, num_axes=2):
     data_source = MultiFolderSource(image_folders)
-    pre_loader = PreLoaderModel(data_source, transforms=[["decode_img"], ["decode_mask"]]) #img_decode_rgb_list])
+    pre_loader = PreLoaderModel(data_source) #, transforms=[["decode_img"], ["decode_mask"]]) #img_decode_rgb_list])
     sorter_model = BinSortingTask(
         labels=SORTER_LABELS,
         out_dir=output_dir,

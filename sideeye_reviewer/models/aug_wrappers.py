@@ -55,10 +55,13 @@ class TransformWrapper:
     """ Wrap a plain function and give it requires / produces sets
         Attach `.requires` / `.produces` metadata so the DAG engine can schedule plain functions
     """
-    def __init__(self, fn: TransformFn, *, requires: Set[str], produces: Set[str]):
+    def __init__(self, fn: TransformFn, *, requires: List[str], produces: List[str]):
         self.fn = fn
-        self.requires = set(requires)
-        self.produces = set(produces)
+        self.requires = list(requires)  # Store as list to preserve order
+        self.produces = list(produces)  # Store as list to preserve order
+        # for backward compatibility with set operations
+        self._requires_set = set(requires)
+        self._produces_set = set(produces)
         # copy dunder info for debuggability
         self.__name__ = fn.__name__
         self.__qualname__ = fn.__qualname__
@@ -132,8 +135,13 @@ class TransformWrapper:
 TRANSFORM_REGISTRY: Dict[str, TransformWrapper] = {}
 
 # def register(name: str, *, requires: set[str], produces: set[str]):
-def register(name: str, *, requires: Set[str] = frozenset(), produces: Set[str] = frozenset()):
+def register(name: str, *, requires: List[str] = None, produces: List[str] = None):
     """ Decorator to register a transform in the global map """
+    if requires is None:
+        requires = []
+    if produces is None:
+        produces = []
+    # decorator function to wrap the transform function
     def _decorator(fn: TransformFn):
         TRANSFORM_REGISTRY[name] = TransformWrapper(fn, requires=requires, produces=produces)
         # mark template key for FigureTemplate lookup
@@ -141,33 +149,37 @@ def register(name: str, *, requires: Set[str] = frozenset(), produces: Set[str] 
         return fn
     return _decorator
 
+#!!! FIXME: remove default target_axes in all assignments
+
+#!!! FIXME: allow additional keyword arguments to the transform functions
 
 # decode first buffer and expose as "img"
-@register("decode_img", requires={"buf0"}, produces={"img"})
+@register("decode_img", requires=["buf0"], produces=["img"])
 def decode_img(inputs, ctx):
-    """buf0 ➜ img (no RenderAsset; lets later transforms decide what to
-    do)."""
+    """ buf0 -> img (no RenderAsset; lets later transforms decide what to do) """
     img = _decode_as_rgb(inputs["buf0"])
     return {"img": img}
 
-@register("decode_mask", requires={"buf1"}, produces={"mask"})
+@register("decode_mask", requires=["buf1"], produces=["mask"])
 def decode_mask(inputs, ctx):
     mask = np.array(PIL.open(io.BytesIO(inputs["buf1"])).convert("L"))
     return {"mask": mask}
 
-@register("seg_overlay", requires={"img", "mask"}, produces=set())
+@register("seg_overlay", requires=["img", "mask"], produces=[])
 def seg_overlay(inputs, ctx):
-    overlay = t_utils.create_segmentation_mask_overlay(inputs["img"], inputs["mask"], alpha=0.35)
-    return RenderAsset("image", overlay, target_axes=1)
+    overlay = t_utils.create_segmentation_mask_overlay(inputs["img"], inputs["mask"])
+    return RenderAsset("image", overlay, target_axes=2)
 
-@register("bbox_overlay", requires={"img", "bboxes"}, produces={"bbox_img"})
+@register("bbox_overlay", requires=["img", "bboxes"], produces=["bbox_img"])
 def bbox_overlay(inputs, ctx):
     overlay = t_utils.create_bbox_overlay_pil(inputs["img"], inputs["bboxes"], colour=(0,255,0))
     return RenderAsset("image", overlay, target_axes=2)
 
-@register("edge_mask", requires={"img"}, produces=set())
+@register("edge_mask", requires=["img"], produces=[])
 def edge_mask(inputs, ctx):
-    mask = t_utils.create_binary_edge_mask(inputs["img"], method="canny")
+    mask = t_utils.create_binary_edge_mask(inputs["img"], method="canny").astype(bool)
+    #mask = (255 * mask).astype(np.uint8) # ! TEMPORARY - just trying to see why it's defaulting to the wrong cmap
+    print(f"Edge mask values: {np.unique(mask)}")
     return RenderAsset("image", mask, target_axes=2)
 
 # @register("rgb_plot", requires={"img"}, produces=set())
@@ -176,8 +188,8 @@ def edge_mask(inputs, ctx):
 #         t_utils.create_rgb_distributions(inputs["img"], ax)
 #     return RenderAsset("callable", _plot, target_axes=5)
 
-@register("rgb_plot", requires={"img"}, produces=set())
+@register("rgb_plot", requires=["img"], produces=[])
 def rgb_plot(inputs, ctx):
-    """Return a callable that will draw on a viewer Axes later."""
+    """ Return a callable that will draw on a viewer Axes later """
     plot_fn = t_utils.create_rgb_distributions()(inputs["img"])  # returns inner populate_axes
     return RenderAsset("callable", plot_fn, target_axes=5)

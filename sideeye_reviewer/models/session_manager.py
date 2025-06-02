@@ -59,6 +59,8 @@ class SessionManager:
     @staticmethod
     def resume_session(session_file: str) -> 'SessionManager':
         """ Loads a session from a JSON file and returns a SessionManager instance """
+        if not os.path.exists(session_file):
+            raise FileNotFoundError(f"Session file '{session_file}' does not exist.")
         log_dir = os.path.dirname(session_file)
         with open(session_file, "r") as f:
             data = dict(json.load(f))

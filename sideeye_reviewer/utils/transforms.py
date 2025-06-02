@@ -38,6 +38,27 @@ def _ensure_full_color_img(img: np.ndarray) -> np.ndarray:
     return img
 
 
+def _rgb_mask_to_labels(mask: np.ndarray) -> Tuple[np.ndarray, Dict[int, Tuple[int, int, int]]]:
+    """ converts a mask with RGB labels to a flat label mask
+        :param mask: mask with RGB labels (shape: H, W, 3)
+        :return: (
+            one-hot encoded mask (shape: H, W) with class IDs as elements,
+            color map dictionary mapping class IDs to RGB colors
+        )
+    """
+    assert mask.ndim == 3 and mask.shape[2] == 3, "Mask must be of shape (H, W, 3)"
+    unique_colors = np.unique(mask.reshape(-1, 3), axis=0)
+    label_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.float32)
+    new_color_map = {}
+    try:
+        for i, color in enumerate(unique_colors):
+            new_color_map[i] = tuple(color)  # store the color as a tuple
+            #label_mask[..., i] = np.all(mask == color, axis=-1).astype(np.float32)
+            label_mask[np.all(mask == color, axis=-1)] = i  # assign class ID to the label mask
+    except Exception as e:
+        print("[TRANSFORMS]: Error while converting RGB mask to one-hot encoding:", e)
+    return label_mask, new_color_map
+
 
 def get_default_color_map(
     num_labels: int,
@@ -56,7 +77,7 @@ def get_default_color_map(
     #     raise ValueError(f"num_labels must be less than {3**len(rgb_value_bank) - 1}")
     elif num_labels == 2:
         # return black and white for binary masks
-        return {0: (0, 0, 0), 1: (1, 1, 1)}
+        return {0: (0, 0, 0), 1: (1, 1, 1)} # or for black and gray: {0: (0, 0, 0), 1: (0.5, 0.5, 0.5)}
     import glasbey
     palette = glasbey.create_palette(palette_size=num_labels, as_hex=False) #, optimize_palette=False)
     # TODO: might remove integer conversion if I'm sticking solely with numpy since everything defaults to float in range [0, 1]
@@ -67,7 +88,7 @@ def get_default_color_map(
 def create_segmentation_mask_overlay(
     img: np.ndarray,
     mask: np.ndarray,
-    alpha: float = 0.15,
+    alpha: float = 0.125,
     color_map: Dict[int, Tuple[int, int, int]] = None,
 ) -> np.ndarray:
     """ Creates a mask overlay for an image with alpha blending
@@ -79,18 +100,29 @@ def create_segmentation_mask_overlay(
     """
     assert isinstance(img, np.ndarray), "img must be a numpy array"
     assert isinstance(mask, np.ndarray), "mask must be a numpy array"
+    is_rgb_mask = (mask.ndim == 3 and mask.shape[-1] == 3)  # check if mask is RGB
+    img_copy = _ensure_normalized_img(img.copy())  # ensure img is float32 and in range [0, 1]
     if img.shape[:2] != mask.shape[:2]:
         # resize the mask to match the image size if needed
         mask = sk_resize(mask, img.shape[:2], order=0, anti_aliasing=False, mode='reflect', preserve_range=True)
-    if color_map is None:
-        print(f"WARNING: No color map provided; Using default color map with number of labels = {int(np.max(mask) + 1)}")
+    # if mask.ndim == 3 and mask.shape[2] == 3:
+    #     # if mask is RGB, convert it to one-hot encoded mask and get the color map
+    #     mask, color_map = _rgb_mask_to_labels(mask)
+    if color_map is None and not is_rgb_mask:
+        num_classes = int(np.max(mask) + 1)
+        print(f"WARNING: No color map provided; Using default color map with number of labels = {num_classes}")
         #! FIXME: need to change this to use the same color map for all masks, so it needs to be passed in
-        color_map = get_default_color_map(np.max(mask) + 1)
-    #? NOTE: assumes numpy-style image with shape (height, width, channels)
-    overlay = np.zeros((mask.shape[0], mask.shape[1], 3), dtype=np.float32)
-    for label, color in color_map.items():
-        overlay = np.where(mask[..., None] == label, color, overlay)
-    overlay = (alpha * overlay + (1 - alpha) * img).astype(np.uint8)
+        color_map = get_default_color_map(num_classes)
+    if not is_rgb_mask:
+        if mask.ndim == 3 and mask.shape[-1] == 1:
+            mask = mask.squeeze(axis=-1)  # remove the last dimension if it's 1
+        #? NOTE: assumes numpy-style image with shape (height, width, channels)
+        overlay = np.zeros((mask.shape[0], mask.shape[1], 3), dtype=np.float32)
+        for label, color in color_map.items():
+            overlay = np.where(mask[..., None] == label, color, overlay)
+    else: # if 3D with 3 color channels
+        overlay = _ensure_normalized_img(mask.copy())  # ensure mask is float32 and in range [0, 1]
+    overlay = (255 * (alpha * overlay + (1 - alpha) * img_copy)).astype(np.uint8)
     return overlay
 
 

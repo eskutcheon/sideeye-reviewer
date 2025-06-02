@@ -32,19 +32,19 @@ def test_review_v2(image_folders, output_dir, num_axes=2):
 
 
 def test_review_v3(image_folders, output_dir, num_axes=2):
-    from sideeye_reviewer.models.data_manager import DataManager, img_decode_rgb_list
+    from sideeye_reviewer.models.data_manager import DataManager
     from sideeye_reviewer.models.data_sources import MultiFolderSource
     from sideeye_reviewer.models.etl_models import PreLoaderModel
     from sideeye_reviewer.models.task_models import BinSortingTask
     from sideeye_reviewer.controllers.review_controller import ReviewerController
     from sideeye_reviewer.views.unilabel_reviewer import SingleLabelReviewerView
-    # TODO: test with sinlge folder source `FolderSource` as well
+    # TODO: test with single folder source `FolderSource` as well
     data_source = MultiFolderSource(image_folders)
-    pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
+    pre_loader = PreLoaderModel(data_source, transforms=[["decode_img"], ["decode_mask"], ["seg_overlay"], ["edge_mask"]])
     sorter_model = BinSortingTask(
         labels=SORTER_LABELS,
         out_dir=output_dir,
-        outfile=f"test_unilabel_sort_{num_axes}img_v3.json", #& UPDATE outfile_name -> outfile
+        outfile=f"test_unilabel_sort_{num_axes}img_v3.json",
     )
     data_manager = DataManager(pre_loader=pre_loader, task_models=sorter_model)
     reviewer = SingleLabelReviewerView(legend_dict=LEGEND_LABELS)

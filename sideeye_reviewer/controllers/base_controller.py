@@ -28,7 +28,8 @@ class BaseReviewController:
         self.use_summary = False # will be replaced with CLI config option in the future
         # TODO: images per batch should soon be determined by session configuration and no longer handled by the data manager
         #! TEMPORARY HARDCODE - REMOVE LATER:
-        self.images_per_fig = 2 #self.data_manager.images_per_batch
+        self.images_per_fig = self.data_manager.expected_num_axes  #! TEMPORARY PATCH - will be replaced with a config option in the future
+        print(f"[CONTROLLER] Using {self.images_per_fig} images per figure.")
         self._stop_requested = False
 
     def initialize(self, checkpoint: Union[bool, int] = True):
@@ -63,11 +64,16 @@ class BaseReviewController:
 
     def _render(self, lr: LoadResult):
         """ draw all assets in the load results onto the view """
-        print("[DEBUGGING] CHECKING IF `assets` IS EMPTY: ", lr.assets)
+        import numpy as np
         for asset in lr.assets: # iterate over RenderAsset objects
             if asset.kind == "image" and hasattr(self.view, "display_image"):
-                print("[DEBUGGING] asset.payload: ", asset.payload)
+                print(f"[DEBUGGING] Rendering asset at axis {asset.target_axes} with payload type {type(asset.payload)}")
+                print(f"[DEBUGGING] asset.payload.shape: {getattr(asset.payload, 'shape', 'N/A')}")
+                print(f"[DEBUGGING] asset.payload dtype: {getattr(asset.payload, 'dtype', 'N/A')}")
+                print(f"[DEBUGGING] asset.payload values: {np.unique(asset.payload)}")
+                # print("[DEBUGGING] asset.payload: ", asset.payload)
                 self.view.display_image(asset.payload, ax_idx=asset.target_axes)
+            #! MIGHT REMOVE - not really needed since any plots will be handled through callables
             elif asset.kind == "plot" and hasattr(self.view, "display_plot"):
                 #! FIXME: not yet implemented - may need to be reassessed entirely since I'll still need to either
                     # 1. pass an axes object all the way to the `PostLoaderModel` to be used as a transforms argument OR
@@ -75,10 +81,9 @@ class BaseReviewController:
                         # in the controller or data manager after retrieving the axes
                 self.view.display_plot(asset.payload, ax_idx=asset.target_axes)
             elif asset.kind == "callable":
+                # TODO: retrieve axes, then pass it to the callable while ensuring everything in self.view.display_image is called as usual
+                    # alternatively, add a new method to the view that accepts a callable and executes it with the axes
                 pass
-            else:
-                print("[DEBUGGING] Checking asset kind: ", asset.kind)
-                print("[DEBUGGING] Asset payload: ", asset.payload)
         # titles / summary
         progress = f"{int(self.data_manager.current_idx) + 1}/{self.data_manager.total}"
         if hasattr(self.view, "update_title"):

@@ -17,6 +17,10 @@ from ..layouts.layout_manager import FigureLayoutManager
             the box IoUs of each pair of object classes
 """
 
+#~ IDEA: if I adopt some ports and adaptors architecture, I can replace the base class with another compatible with something like plotly,
+#~ then keep the same logic for the views with some polymorphism for the different UI backends. Then the entire `layouts` module would need to be replaced.
+#~ The addition of the plotly view would mean I can still make this into a webapp eventually
+
 
 class BaseReviewerView:
     """ contains the common UI building logic and references for reviewer objects """
@@ -136,7 +140,8 @@ class BaseReviewerView:
         else:
             # if the viewer is only displaying one image, don't set the aspect ratio to "auto" since it will be stretched
             aspect_ratio = "auto" if self.images_per_fig > 1 else None
-            img_obj = ax.imshow(image, aspect=aspect_ratio)
+            cmap = "gray" if image.ndim == 2 else None  # use gray colormap for single-channel images
+            img_obj = ax.imshow(image, aspect=aspect_ratio, cmap=cmap)
             self.canvas_images.append(img_obj)
         self.fig.canvas.draw_idle()  # Update without forcing new figures
 

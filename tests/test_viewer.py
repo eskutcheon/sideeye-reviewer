@@ -22,14 +22,14 @@ def show_disputed_v2(file_list, img_dirs, num_axes=2):
 
 
 def test_slideshow_v3(image_folders, output_dir, file_list, num_axes=2):
-    from sideeye_reviewer.models.data_manager import DataManager, img_decode_rgb_list
+    from sideeye_reviewer.models.data_manager import DataManager #, img_decode_rgb_list
     from sideeye_reviewer.models.data_sources import MultiFolderSource
     from sideeye_reviewer.models.etl_models import PreLoaderModel
     from sideeye_reviewer.controllers.slides_controller import SlideshowController
     from sideeye_reviewer.views.slides_viewer import SlideshowViewerView
 
     data_source = MultiFolderSource(image_folders)
-    pre_loader = PreLoaderModel(data_source, transforms=[img_decode_rgb_list])
+    pre_loader = PreLoaderModel(data_source, transforms=[["decode_img"], ["decode_mask"]])
     data_manager = DataManager(pre_loader=pre_loader)
     viewer = SlideshowViewerView("My Slideshow", slide_duration=1)
     controller = SlideshowController(data_manager, viewer)

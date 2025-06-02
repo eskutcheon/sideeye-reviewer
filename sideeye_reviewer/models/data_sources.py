@@ -27,6 +27,7 @@ class FolderSource(DataSource):
     """ Concrete DataSource for a flat or nested folder on local disk """
     def __init__(self, root: str | Path, patterns: Tuple[str, ...] = ("*.png", "*.jpg", "*.jpeg")):
         self.root = Path(root)
+        self.num_roots = 1  # single root folder
         self.patterns = patterns
         self._cache: Dict[str, bytes] = {}
 
@@ -52,6 +53,7 @@ class MultiFolderSource(DataSource):
     """ Concrete DataSource for multiple folders, yielding IDs present in ALL root directories """
     def __init__(self, roots: List[str | Path], patterns: Tuple[str, ...] = ("*.png", "*.jpg", "*.jpeg")):
         self.roots = [Path(r) for r in roots]
+        self.num_roots = len(self.roots)
         self.patterns = patterns
         self._cache: Dict[str, List[bytes]] = defaultdict(list)
         self._common_ids: List[str] = self._compute_common_ids()

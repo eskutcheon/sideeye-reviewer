@@ -56,6 +56,7 @@ class DataManager:
         from .task_models import TaskOrchestrator  # lazy imports to avoid circular refs
         from .session_manager import SessionManager
         self.pre_loader = pre_loader
+        self.expected_num_axes = pre_loader.get_num_to_plot() #! TEMPORARY PATCH - will be replaced with a config option in the future
         self.post_loader = post_loader or []
         if task_models and not isinstance(task_models, Iterable):
             task_models = [task_models]  # ensure task_models is iterable
@@ -80,9 +81,8 @@ class DataManager:
     def get_current(self) -> LoadResult:
         item_id = self._ids[self._idx]
         if item_id not in self._cache:
-            print(f"[DEBUG] Loading item {item_id} into cache...")
             lr = self.pre_loader.load(item_id)
-            print("load result: ", lr)
+            #print("load result: ", lr)
             self._insert_cache(lr)
         return self._cache[item_id]
 
