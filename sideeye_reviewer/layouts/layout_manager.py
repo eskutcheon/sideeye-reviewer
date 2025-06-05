@@ -30,7 +30,7 @@ class FigureLayoutManager:
             3) A bottom row for horizontally aligned buttons.
             4) References to all Axes in a dictionary.
     """
-    MAX_IMG_PER_FIGURE = 4  # max number of images per figure - throw error if num_images > this
+    MAX_IMG_PER_FIGURE = 6  # max number of images per figure - throw error if num_images > this
     MAX_IMG_COLS = 3  # max number of image per row
     FIGURE_DIMS = (12, 7)  # default figure dimensions (width, height)
 

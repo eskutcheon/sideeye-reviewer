@@ -10,10 +10,11 @@ from .etl_models import RenderAsset
 from ..utils import transforms as t_utils
 
 
+# TODO: move decoding functions to `utils/transforms.py` or `utils/utils.py` later
+# TODO: also consider removing the less intuitive positional and keyword arguments like `*` or `**_`
 
 def _decode_as_rgb(buf: bytes) -> np.ndarray:
     return np.array(PIL.open(io.BytesIO(buf)).convert("RGB"))
-
 
 def img_decode_rgb(*, item_id: str, raw: bytes, ctx: dict, **_) -> RenderAsset:
     img = _decode_as_rgb(item_id=item_id, raw=raw, ctx=ctx, idx=0)
@@ -73,6 +74,8 @@ class TransformWrapper:
 
 
 
+
+
 # ------------------------------------------------------------------
 #  Figure template (bare‑bones)
 # ------------------------------------------------------------------
@@ -90,7 +93,17 @@ class TransformWrapper:
 #     def from_dict(cls, data: Dict[str, Any]):
 #         return cls(axes=[AxesTemplate(**d) for d in data.get("axes", [])])
 
-
+# -----------------------------------------------------------------
+# minimal figure‑template glue  (reviewer/config.py idea)
+# -----------------------------------------------------------------
+# Given a parsed YAML list like [{'slot':0,'transform':'create_segmentation_mask_overlay'}, …]
+# we can construct the PreLoaderModel pipeline as:
+#
+#   transforms = [TRANSFORM_REGISTRY[item['transform']] for item in template]
+#   pre_loader  = PreLoaderModel(source, transforms)
+#
+# slot/axes assignment is embedded in each RenderAsset via wrapper logic.
+# ==============================================================
 
 
 
@@ -112,20 +125,6 @@ class TransformWrapper:
 #         return fn
 #     return _wrap
 
-
-
-
-# -----------------------------------------------------------------
-# minimal figure‑template glue  (reviewer/config.py idea)
-# -----------------------------------------------------------------
-# Given a parsed YAML list like [{'slot':0,'transform':'create_segmentation_mask_overlay'}, …]
-# we can construct the PreLoaderModel pipeline as:
-#
-#   transforms = [TRANSFORM_REGISTRY[item['transform']] for item in template]
-#   pre_loader  = PreLoaderModel(source, transforms)
-#
-# slot/axes assignment is embedded in each RenderAsset via wrapper logic.
-# ==============================================================
 
 
 
@@ -177,7 +176,7 @@ def bbox_overlay(inputs, ctx):
 
 @register("edge_mask", requires=["img"], produces=[])
 def edge_mask(inputs, ctx):
-    mask = t_utils.create_binary_edge_mask(inputs["img"], method="canny").astype(bool)
+    mask = t_utils.create_binary_edge_mask(inputs["img"], method="canny", adaptive_threshold=True).astype(bool)
     #mask = (255 * mask).astype(np.uint8) # ! TEMPORARY - just trying to see why it's defaulting to the wrong cmap
     print(f"Edge mask values: {np.unique(mask)}")
     return RenderAsset("image", mask, target_axes=2)
@@ -191,5 +190,5 @@ def edge_mask(inputs, ctx):
 @register("rgb_plot", requires=["img"], produces=[])
 def rgb_plot(inputs, ctx):
     """ Return a callable that will draw on a viewer Axes later """
-    plot_fn = t_utils.create_rgb_distributions()(inputs["img"])  # returns inner populate_axes
+    plot_fn = lambda ax: t_utils.create_rgb_distributions()(inputs["img"], ax)  # returns inner populate_axes
     return RenderAsset("callable", plot_fn, target_axes=5)

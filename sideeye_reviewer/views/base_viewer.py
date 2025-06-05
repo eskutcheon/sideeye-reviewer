@@ -1,9 +1,9 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Callable
 import matplotlib.pyplot as plt
 # local imports
 from .reviewer_button import ReviewerButton
 from ..types import ControllerLike
-from ..utils.utils import maximize_window
+from ..utils.utils import maximize_window, adjust_axes_position
 from ..layouts.layout_manager import FigureLayoutManager
 
 
@@ -145,6 +145,25 @@ class BaseReviewerView:
             self.canvas_images.append(img_obj)
         self.fig.canvas.draw_idle()  # Update without forcing new figures
 
+    def set_plot_from_callable(self, callable_fn: Callable, ax_idx=0):
+        """ sets a plot from a callable function that takes an axes object as an argument """
+        if not callable(callable_fn):
+            raise ValueError("The callable_fn argument must be a callable function that takes an axes object as an argument.")
+        ax = self.layout.get_image_subaxes(ax_idx).axes
+        ax.clear()  # clear the axes before adding a new subplot
+        # get current artist on the axes to ensure we only add the newest artist next
+        old_artists = ax.get_children()
+        # call the function with the axes object
+        ax: plt.Axes = callable_fn(ax)
+        new_artists = ax.get_children()
+        if len(self.canvas_images) > ax_idx: # update the existing object at this index
+            self.canvas_images[ax_idx] = [art for art in new_artists if art not in old_artists]  # keep only the new artists
+        else:
+            # shrink axes slightly if this is the first time we're setting the plot (do only once or it shrinks repeatedly)
+            ax = adjust_axes_position(ax)  # adjust the axes position to leave room for ticks and labels
+            self.canvas_images.append(new_artists)  # add a new object to the list if it doesn't exist yet
+        self.fig.canvas.draw_idle()
+
     def update_title(self, text, subtitle = None):
         if self.warning_text is not None:
             self.warning_text.set_visible(False)
@@ -221,4 +240,3 @@ class BaseReviewerView:
         #if not self._stop_requested and self.controller:
         if self.controller:
             self.controller.on_window_closed()
-

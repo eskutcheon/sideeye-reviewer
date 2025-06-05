@@ -60,6 +60,18 @@ def _rgb_mask_to_labels(mask: np.ndarray) -> Tuple[np.ndarray, Dict[int, Tuple[i
     return label_mask, new_color_map
 
 
+def _linear_alpha_blend(img1: np.ndarray, img2: np.ndarray, alpha: float) -> np.ndarray:
+    """ Performs linear alpha blending of two images
+        :param img1: first image (background)
+        :param img2: second image (foreground)
+        :param alpha: blending factor (0.0 - 1.0)
+        :return: blended image
+    """
+    assert img1.shape == img2.shape, "Images must have the same shape for blending"
+    assert 0 <= alpha <= 1, "Alpha must be in the range [0, 1]"
+    return (alpha * img2 + (1 - alpha) * img1).astype(np.float32)  # ensure float32 output
+
+
 def get_default_color_map(
     num_labels: int,
     use_black = True,
@@ -122,7 +134,7 @@ def create_segmentation_mask_overlay(
             overlay = np.where(mask[..., None] == label, color, overlay)
     else: # if 3D with 3 color channels
         overlay = _ensure_normalized_img(mask.copy())  # ensure mask is float32 and in range [0, 1]
-    overlay = (255 * (alpha * overlay + (1 - alpha) * img_copy)).astype(np.uint8)
+    overlay = (255 * _linear_alpha_blend(img_copy, overlay, alpha)).astype(np.uint8)  # blend the overlay with the image
     return overlay
 
 
@@ -181,20 +193,22 @@ def _set_bbox_mask_indices(bbox_bounds: Sequence[int], img_shape: Tuple[int], li
     y_max = min(H, y2 + extra)
     x_min = max(0, x1 - half_line)
     x_max = min(W, x2 + extra)
-    # greate meshgrid only within the region of interest (as short dtype to save memory)
-    y_range = np.arange(y_min, y_max, dtype=np.int16)
-    x_range = np.arange(x_min, x_max, dtype=np.int16)
-    # calculate relative positions for the mask conditions
-    y_grid, x_grid = np.meshgrid(y_range, x_range, indexing='ij')
+    # greate meshgrid only within the region of interest (as short int); compute relative positions for mask conditions
+    y_grid, x_grid = np.meshgrid(
+        np.arange(y_min, y_max, dtype=np.int16),
+        np.arange(x_min, x_max, dtype=np.int16), indexing='ij'
+    )
+    #& UPDATE: changed order so intersection comes immediately after instantiation for better CPU cache performance
     # create masks for each edge with centered line width
     top_mask = np.abs(y_grid - y1) < line_width/2
-    bottom_mask = np.abs(y_grid - y2) < line_width/2
-    left_mask = np.abs(x_grid - x1) < line_width/2
-    right_mask = np.abs(x_grid - x2) < line_width/2
     # only include points that are actually on the box perimeter
     top_mask &= (x_grid >= x1 - half_line) & (x_grid <= x2 + half_line)
+    # repeat for remaining edges
+    bottom_mask = np.abs(y_grid - y2) < line_width/2
     bottom_mask &= (x_grid >= x1 - half_line) & (x_grid <= x2 + half_line)
+    left_mask = np.abs(x_grid - x1) < line_width/2
     left_mask &= (y_grid >= y1) & (y_grid <= y2)
+    right_mask = np.abs(x_grid - x2) < line_width/2
     right_mask &= (y_grid >= y1) & (y_grid <= y2)
     # combine all masks and get get indices where the final mask is True
     box_mask = top_mask | bottom_mask | left_mask | right_mask
@@ -264,7 +278,7 @@ def create_bbox_overlay_pil(
             print(f"WARNING: Bounding box {bbox} is too small to draw; skipping...")
             continue
         y_indices, x_indices = _set_bbox_mask_indices((x1, y1, x2, y2), (H, W), line_width)
-        working_img[y_indices, x_indices] = alpha * np.array(color) + (1 - alpha) * working_img[y_indices, x_indices]
+        working_img[y_indices, x_indices] = _linear_alpha_blend(working_img[y_indices, x_indices], np.array(color), alpha)
         if labels is not None and i < len(labels):
             text = labels[i]
             text_width, text_height = draw.textbbox((0, 0), text, font=font)[2:]
@@ -310,7 +324,7 @@ SUPPORTED_ADAPTIVE_THRESHOLDING_METHODS = [
     #? NOTE: may not be using all of these but I'm listing them to look up again later
     'mean', 'otsu', 'isodata', 'li', 'minimum', 'triangle', 'yen' #'niblack', 'sauvola', 'local' #? <- these return entire thresholded masks, not a scalar threshold
 ]
-MAX_IMG_SIZE_FOR_EDGE_DETECTION = 720  # maximum size for edge detection before downscaling is applied
+MAX_IMG_SIZE_FOR_EDGE_DETECTION = 1280  # maximum size for edge detection before downscaling is applied
 
 
 #! FIXME: the thresholding and edge masking functions need work - all results look kinda bad
@@ -355,7 +369,7 @@ def create_binary_edge_mask(
     img: np.ndarray,
     method: str = 'canny',
     adaptive_threshold: bool = False,
-    adaptive_threshold_method: str = 'otsu',
+    adaptive_threshold_method: str = 'yen',
     **kwargs
 ) -> np.ndarray:
     """ Creates an edge mask for an image using the specified method
@@ -366,7 +380,7 @@ def create_binary_edge_mask(
         Returns:
             (np.ndarray) binary edge mask
     """
-    img_copy = img.copy()
+    img_copy = _ensure_normalized_img(img.copy())
     img_shape_init = img.shape
     if img.ndim == 3 and img.shape[2] == 3:
         img_copy = _rgb_to_grayscale(img_copy)  # convert to grayscale if RGB
@@ -375,14 +389,17 @@ def create_binary_edge_mask(
         scale_factor = MAX_IMG_SIZE_FOR_EDGE_DETECTION / max(img_copy.shape)
         img_copy = sk_rescale(img_copy, scale_factor, anti_aliasing=True, mode='reflect', preserve_range=True)
     edges = None
-    threshold = _compute_adaptive_threshold(img_copy, method=adaptive_threshold_method) if adaptive_threshold else None
+    threshold = _compute_adaptive_threshold(img_copy, method=adaptive_threshold_method)/2 if adaptive_threshold else None
+    print("Using adaptive threshold:", adaptive_threshold, "|\t with method:", adaptive_threshold_method, "|\t and threshold value:", threshold)
     if method == 'canny':
         # Canny edge detection
         sigma = kwargs.get('sigma', 1.0)
         low_threshold = threshold or kwargs.get('low_threshold', 0.1)
         high_threshold = kwargs.get('high_threshold', 0.3)
+        print("low, high thresholds:", low_threshold, high_threshold)
         if high_threshold <= low_threshold:
             high_threshold = (low_threshold + 1)/2
+        print("low, high thresholds:", low_threshold, high_threshold)
         edges = skfe.canny(img_copy, sigma=sigma, low_threshold=low_threshold, high_threshold=high_threshold)
     else:
         threshold = threshold or kwargs.get('threshold', 0.1)
@@ -407,7 +424,7 @@ def create_binary_edge_mask(
         else:
             raise ValueError(f"Unknown edge detection method: {method}. Supported methods: {SUPPORTED_EDGE_DETECTION_METHODS}.")
         # apply threshold to get binary mask - all filters return float32 images in range [0, 1]
-        if method != 'hysteresis':
+        if method not in ['canny', 'hysteresis']:
             edges = edges > threshold
     if edges is None:
         raise ValueError(f"Edge detection method '{method}' did not return any edges.")
@@ -471,7 +488,6 @@ def create_ssim_heatmap(
     # !! results just look solarized - not sure if this is the best way to visualize SSIM if at all
     return ssim_img.astype(np.float32)  # return the SSIM image as a float32 heatmap
 
-
 # adding the following transforms function specifically to conceptualize how I'll handle creation of plots without affecting matplotlib's figure context
 def create_rgb_distributions(
     bins: int = 256,
@@ -479,38 +495,43 @@ def create_rgb_distributions(
     alpha: float = 0.5,
 ) -> Dict[str, np.ndarray]:
     """ Creates RGB channel distributions for an image
-        :param img: input image as a numpy array
         :param bins: number of bins for the histogram
-        :param range: range of values for the histogram
-        :return: dictionary with keys 'red', 'green', 'blue' and their corresponding histograms
+        :param data_range: range of values for the histogram
+        :param alpha: transparency of the distribution plot
+        :return: a callable that can be used to populate the axes with the RGB distribution plot
     """
-    # TODO: I was writing this with the intent to pass an image to the inner function, but it may be better
-        # to create it just once and pass the axes and a new image each time
-        #~ i could actually go the opposite way and pass an axes to the top level function and accept an image in the inner function
-            #~ since the same axes objects are reused for each image
+    # TODO: I was writing this with the intent to pass an image to the inner function, but I could actually do the opposite and pass
+        #~ an axes to the top level function and accept an image in the inner function since the same axes objects are reused for each image
     # return local function to populate the axes with the RGB distributions when called
     def populate_axes(img, ax: plt.Axes) -> plt.Axes: # assume a single axes object is passed in
         """ callable to return to the dispatcher which populates the axes with the histogram """
         assert img.ndim == 3 and img.shape[2] == 3, "Image must be RGB with shape (H, W, 3)"
         # ensure the image is normalized to [0, 1]
         img = _ensure_normalized_img(img)
+        TOL = 1e-6  # tolerance to add to histogram for numerical stability (to use log scale if needed)
         # compute histograms for each channel
         histogram = np.array([
             np.histogram(img[..., i], bins=bins, range=data_range)[0] for i in range(3)
-        ])
+        ]).astype(np.float32)
+        # TODO: move the tick_params and grid settings to a separate function to reuse for similar plotting functions
+            # may also let log_scale be a flag for this new function and replace the ax.set_yscale('log') with it
+        ax.tick_params(reset=True, axis='both', which='both', color='black', top=False, right=False)
+        #ax.margins(x=0.05, y=0.05)  # Add small margins
+        ax.grid(visible=True, alpha=alpha/2, axis='both')  # set grid transparency
         ax = sns.kdeplot(
-            data=histogram.T,  # transpose to have channels as columns
+            data = histogram.T + TOL, # transpose to have channels as columns and add small tolerance to avoid log(0)
             ax=ax,
-            palette=sns.color_palette(['blue', 'green', 'red']), # used only for RGB channels
+            palette=sns.color_palette(['red', 'green', 'blue']), # used only for RGB channels
             fill=True,
             common_norm=False,  # normalize each channel separately
+            common_grid=True,   # use common grid for all channels
             alpha=alpha,
-            log_scale=True, # use log scale for better visibility of low-frequency channels
             linewidth=0,
         )
-        ax.grid(visible=True, alpha=alpha/2)  # set grid transparency
+        ax.set_yscale('log')  # set y-axis to log scale
         ax.set_title('RGB Channel Distributions')
-        ax.legend(['Red', 'Green', 'Blue'], title='Channels', loc='upper right')
+        #! FIXME: this approach to generating the legend on existing plots is discouraged by seaborn - might want to extract artists and pass those
+        ax.legend(['Blue', 'Green', 'Red'], title='Channels', loc='upper right')
         return ax
     return populate_axes  # return the callable to be used by the dispatcher
 
@@ -520,7 +541,7 @@ def create_rgb_distributions(
 
 
 # TODO: add factory/dispatcher function to be called by the loader model to generate the appropriate overlay, additional mask, or a graph of some sort
-    # NOTE: still need to figure out how to handle regular data plots 
+    # NOTE: still need to figure out how to handle regular data plots
     # main thing that I can think to do is pass in the axes as well, since they're allocated well in advance of the images
         # will require major changes in logic between the data manager and controllers, but that was planned anyway
     
@@ -540,4 +561,3 @@ def create_rgb_distributions(
             # i.e. with a systolic array of the same shape as the grid of axes, where each element is a callable
             # could be taken as far as all the image loading being done by composed callables
     # both methods require a greater amount of new dispatcher logic in the new models and data manager
-

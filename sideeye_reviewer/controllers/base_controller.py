@@ -67,23 +67,21 @@ class BaseReviewController:
         import numpy as np
         for asset in lr.assets: # iterate over RenderAsset objects
             if asset.kind == "image" and hasattr(self.view, "display_image"):
-                print(f"[DEBUGGING] Rendering asset at axis {asset.target_axes} with payload type {type(asset.payload)}")
-                print(f"[DEBUGGING] asset.payload.shape: {getattr(asset.payload, 'shape', 'N/A')}")
-                print(f"[DEBUGGING] asset.payload dtype: {getattr(asset.payload, 'dtype', 'N/A')}")
-                print(f"[DEBUGGING] asset.payload values: {np.unique(asset.payload)}")
-                # print("[DEBUGGING] asset.payload: ", asset.payload)
+                # print(f"[DEBUGGING] Rendering asset at axis {asset.target_axes} with payload type {type(asset.payload)}")
+                # print(f"[DEBUGGING] asset.payload.shape: {getattr(asset.payload, 'shape', 'N/A')}")
+                # print(f"[DEBUGGING] asset.payload dtype: {getattr(asset.payload, 'dtype', 'N/A')}")
+                # print(f"[DEBUGGING] asset.payload values: {np.unique(asset.payload)}")
                 self.view.display_image(asset.payload, ax_idx=asset.target_axes)
             #! MIGHT REMOVE - not really needed since any plots will be handled through callables
             elif asset.kind == "plot" and hasattr(self.view, "display_plot"):
                 #! FIXME: not yet implemented - may need to be reassessed entirely since I'll still need to either
                     # 1. pass an axes object all the way to the `PostLoaderModel` to be used as a transforms argument OR
-                    # 2. adopt a builder pattern that sets up all steps to perform as a callable to be applied
-                        # in the controller or data manager after retrieving the axes
-                self.view.display_plot(asset.payload, ax_idx=asset.target_axes)
+                    # 2. adopt a builder pattern that sets up all steps to perform as a callable from the controller or data manager after retrieving the axes
+                raise NotImplementedError("Plot rendering is not yet implemented in the controller.")
             elif asset.kind == "callable":
                 # TODO: retrieve axes, then pass it to the callable while ensuring everything in self.view.display_image is called as usual
                     # alternatively, add a new method to the view that accepts a callable and executes it with the axes
-                pass
+                self.view.set_plot_from_callable(asset.payload, ax_idx=asset.target_axes)
         # titles / summary
         progress = f"{int(self.data_manager.current_idx) + 1}/{self.data_manager.total}"
         if hasattr(self.view, "update_title"):

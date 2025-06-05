@@ -23,6 +23,22 @@ def maximize_window():
         print(f"WARNING: Unsupported backend {backend} for maximize operation")
 
 
+
+#! MOVE LATER - may be added to some new system that determines plot types to do this for all kind="plot" payloads
+def adjust_axes_position(ax: plt.Axes, padding: float = 0.02) -> plt.Axes:
+    """ Adjusts the axes position to leave room for ticks and labels
+        :param ax: matplotlib Axes object to adjust
+        :param padding: padding to leave around the axes
+        :return: adjusted Axes object
+    """
+    # TODO: make this a global method called only the first time by the viewer to adjust the axes position
+    # TODO: update this to dynamically adjust padding based on the presence of labels, ticks, and titles
+    pos = ax.get_position()
+    # shrink the axes slightly from the left and bottom
+    ax.set_position([pos.x0 + padding, pos.y0 + padding, pos.width - padding, pos.height - 2*padding])
+    return ax
+
+
 #& commented out for now since its job was taken over by the static method `AxesCreationManager.compute_button_positions`
     #~ The two approaches could both still be used and might benefit as helper functions called by an orchestrator function
 # UPDATE: now returns button axes centered between right_bound and left_bound
@@ -89,7 +105,7 @@ def _remove_duplicate_files_json(out_file_path: str):
     with open(out_file_path, 'r') as fptr:
         out_dict = dict(json.load(fptr))
         for key in out_dict.keys():
-            out_dict[key] = sorted(list(set(out_dict[key])))
+            out_dict[key] = sorted(set(out_dict[key]))
     with open(out_file_path, 'w') as fptr:
         json.dump(out_dict, fptr, indent=4)
 

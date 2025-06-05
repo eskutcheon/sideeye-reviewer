@@ -164,7 +164,9 @@ class PreLoaderModel:
                 #~ e.g. "ImagePayload" for bytes that are expected to be decoded as images, "MaskPayload" for masks,
                 #~ DerivedPayload for derived assets that has a description of input types (other payload classes)
                 #~ the latter wouldn't wrap bytes but the final payload type, however - may or may not be a callable
-                #~ this may also be good for handling non-image input that's needed for some transforms, like bounding box indices
+                    #~ this may also be good for handling non-image input that's needed for some transforms, like bounding box indices
+                    #~ not sure whether I should add necessary input arguments to the DerivedPayload or handle it with the DataSource subclasses
+            #~ think this generally follows an abstract factory or builder approach
         if self._separate_transforms:
             # handle case where transforms is a list of lists
             if isinstance(raw, (bytes, bytearray)):
@@ -207,8 +209,8 @@ class PreLoaderModel:
                 try:
                     # TODO: need to figure out an approach for non-image data like the bounding box indices too
                     for tt in t:
-                        #! PROBLEM: the `TransformWrapper.requires` is a set, which doesn't preserve order; We can't reliably map the first to always
-                            #! be the image buffer and second to be the mask either since the order in the source only depends on the original input order
+                        #! PROBLEM: We can't reliably map the first input to always be the image buffer and second to be the mask since
+                            # the order in the source only depends on the original input order
                         inputs = {arg: np.array(PIL.open(io.BytesIO(raw[i])).convert("RGB")) for i, arg in enumerate(tt.requires)}
                         assets: List[RenderAsset] = self._load_single(item_id, inputs, [tt], ctx)
                         assets[0].target_axes = num_raw_assets + idx  #! TEMPORARY PATCH: base RenderAsset's target_axes on the current index in the transforms list
